@@ -963,11 +963,11 @@
 
       pop.innerHTML = `
         <div class="cal-header">
-          <button type="button" class="cal-nav" onclick="changeCalendarMonth(-1)" aria-label="เดือนก่อนหน้า">
+          <button type="button" class="cal-nav" onclick="changeCalendarMonth(-1); event.stopPropagation();" aria-label="เดือนก่อนหน้า">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <div class="cal-title">${THAI_MONTHS[viewMonth]} ${toBuddhistYear(viewYear)}</div>
-          <button type="button" class="cal-nav" onclick="changeCalendarMonth(1)" aria-label="เดือนถัดไป" ${isViewingCurrentMonth ? 'disabled' : ''}>
+          <button type="button" class="cal-nav" onclick="changeCalendarMonth(1); event.stopPropagation();" aria-label="เดือนถัดไป" ${isViewingCurrentMonth ? 'disabled' : ''}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
