@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>เช็คชื่อกิจกรรมสี</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700;800&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ------------------------------------------------------------------ */
+  /* Tokens                                                              */
+  /* ------------------------------------------------------------------ */
+  @property --accent {
+    syntax: '<color>';
+    inherits: true;
+    initial-value: #57534E;
+  }
+
+  :root {
+    --bg: #F7F6F2;
+    --surface: #FFFFFF;
+    --surface-soft: #FBFAF8;
+    --ink: #1C1917;
+    --ink-soft: #78716C;
+    --ink-faint: #ADA9A2;
+    --line: #E9E6DF;
+    --accent: #57534E;
+    --accent-soft: color-mix(in srgb, var(--accent) 12%, white);
+    --accent-ring: color-mix(in srgb, var(--accent) 35%, transparent);
+    --c-red: #DC2626;
+    --c-blue: #2563EB;
+    --c-green: #15803D;
+    --c-pink: #DB2777;
+    --c-none: #57534E;
+    --radius-lg: 22px;
+    --radius-md: 16px;
+    --radius-full: 999px;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 12% -8%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 55%),
+      radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 45%);
+    background-attachment: fixed;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    transition: background-image 0.6s ease;
+    padding-bottom: 72px;
+  }
+  h1, h2, h3, .display {
+    font-family: 'Kanit', sans-serif;
+    letter-spacing: -0.01em;
+  }
+  ::selection { background: var(--accent-soft); }
+
+  /* ------------------------------------------------------------------ */
+  /* Layout shell                                                       */
+  /* ------------------------------------------------------------------ */
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: color-mix(in srgb, var(--surface) 78%, transparent);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--line);
+  }
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 16px 0;
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 42px; height: 42px;
+    border-radius: 13px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(155deg, var(--accent), color-mix(in srgb, var(--accent) 55%, black));
+    box-shadow: 0 8px 18px -8px var(--accent-ring);
+    flex-shrink: 0;
+    transition: background 0.6s ease, box-shadow 0.6s ease;
+  }
+  .brand-mark svg { color: white; width: 22px; height: 22px; }
+  .brand-title { font-weight: 700; font-size: 1.15rem; line-height: 1.15; color: var(--ink); }
+  .brand-title b { color: var(--accent); font-weight: 700; transition: color .6s ease; }
+  .brand-sub { font-size: .72rem; color: var(--ink-faint); font-weight: 500; margin-top: 1px; }
+
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    padding: 8px 16px;
+    border-radius: var(--radius-full);
+    font-size: .8rem; font-weight: 600; color: var(--ink-soft);
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #10B981;
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.18);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.45} }
+
+  main { padding-top: 26px; }
+
+  /* ------------------------------------------------------------------ */
+  /* Tabs                                                                */
+  /* ------------------------------------------------------------------ */
+  .tab-row {
+    display: flex; gap: 4px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 4px;
+  }
+  .tab-btn {
+    appearance: none; border: none; cursor: pointer;
+    background: transparent;
+    color: var(--ink-soft);
+    font-family: 'Kanit', sans-serif;
+    font-weight: 600; font-size: .88rem;
+    padding: 10px 4px;
+    margin-bottom: -1px;
+    border-bottom: 2.5px solid transparent;
+    transition: color .2s ease, border-color .2s ease;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .tab-btn svg { width: 15px; height: 15px; }
+  .tab-btn:hover { color: var(--ink); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ------------------------------------------------------------------ */
+  /* Date bar + calendar popover                                        */
+  /* ------------------------------------------------------------------ */
+  .date-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .date-nav-btn {
+    width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+    border: 1px solid var(--line); background: var(--surface);
+    cursor: pointer; color: var(--ink-soft);
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color .2s ease, color .2s ease;
+  }
+  .date-nav-btn svg { width: 16px; height: 16px; }
+  .date-nav-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .date-nav-btn:disabled { opacity: .35; cursor: default; }
+
+  .date-trigger {
+    flex: 1; min-width: 190px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    padding: 10px 18px;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    font-family: 'Kanit', sans-serif;
+    font-weight: 600; font-size: .9rem;
+    color: var(--ink);
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  .date-trigger:hover { border-color: var(--accent); }
+  .date-trigger.is-open { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  .date-trigger svg { width: 17px; height: 17px; color: var(--ink-faint); flex-shrink: 0; }
+
+  .date-today-chip {
+    padding: 9px 16px; flex-shrink: 0;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--accent-ring);
+    background: var(--accent-soft);
+    color: color-mix(in srgb, var(--accent) 80%, black);
+    font-family: 'Kanit', sans-serif; font-weight: 600; font-size: .78rem;
+    cursor: pointer; white-space: nowrap;
+    transition: transform .15s ease;
+  }
+  .date-today-chip:hover { transform: translateY(-1px); }
+
+  .past-edit-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A;
+    padding: 5px 12px; border-radius: var(--radius-full);
+    font-size: .68rem; font-weight: 700; font-family: 'Kanit', sans-serif;
+    white-space: nowrap;
+  }
+  .past-edit-badge svg { width: 12px; height: 12px; }
+
+  .calendar-popover {
+    position: absolute; z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    box-shadow: 0 24px 55px -18px rgba(0,0,0,.28);
+    padding: 16px;
+    width: 280px;
+    animation: cal-pop-in .16s ease;
+  }
+  @keyframes cal-pop-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .cal-nav {
+    background: none; border: none; cursor: pointer; color: var(--ink-soft);
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s ease;
+  }
+  .cal-nav:hover:not(:disabled) { background: var(--surface-soft); color: var(--ink); }
+  .cal-nav:disabled { opacity: .3; cursor: default; }
+  .cal-nav svg { width: 16px; height: 16px; }
+  .cal-title { font-family: 'Kanit', sans-serif; font-weight: 600; font-size: .92rem; }
+  .cal-weekdays {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    font-size: .66rem; color: var(--ink-faint); text-align: center;
+    margin-bottom: 4px; font-weight: 600;
+  }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .cal-cell {
+    position: relative; aspect-ratio: 1; border: none; background: none;
+    border-radius: 10px; cursor: pointer; font-size: .8rem; color: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+  }
+  .cal-cell.is-empty { cursor: default; }
+  .cal-cell:not(.is-empty):not(.is-disabled):hover { background: var(--surface-soft); }
+  .cal-cell.is-today { font-weight: 700; color: var(--accent); }
+  .cal-cell.is-selected { background: var(--accent); color: white; }
+  .cal-cell.is-disabled { color: var(--ink-faint); cursor: default; opacity: .35; }
+  .cal-dot {
+    position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%; background: var(--accent); opacity: .65;
+  }
+  .cal-cell.is-selected .cal-dot { background: white; opacity: .9; }
+  .cal-today-btn {
+    margin-top: 12px; width: 100%; padding: 9px;
+    border-radius: var(--radius-full); border: 1px solid var(--line);
+    background: var(--surface-soft); cursor: pointer;
+    font-family: 'Kanit', sans-serif; font-weight: 600; font-size: .78rem;
+    color: var(--ink-soft); transition: all .15s ease;
+  }
+  .cal-today-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ------------------------------------------------------------------ */
+  /* Team selector                                                      */
+  /* ------------------------------------------------------------------ */
+  .panel {
+    background: color-mix(in srgb, var(--surface) 75%, transparent);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    margin-bottom: 22px;
+  }
+  .panel-label {
+    display: flex; align-items: center; gap: 10px;
+    font-size: .78rem; font-weight: 700; color: var(--ink-soft);
+    text-transform: uppercase; letter-spacing: .06em;
+    margin-bottom: 16px;
+  }
+  .panel-label .line { flex: 1; height: 1px; background: var(--line); }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 10px; }
+
+  .chip {
+    appearance: none; border: none; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 11px 18px 11px 14px;
+    border-radius: var(--radius-full);
+    font-family: 'Kanit', sans-serif;
+    font-weight: 600; font-size: .86rem;
+    background: var(--chip-tint-10);
+    border: 1.5px solid var(--chip-tint-25);
+    color: var(--chip-ink);
+    transition: transform .2s cubic-bezier(.4,0,.2,1), box-shadow .2s ease, border-color .2s ease, background .2s ease;
+  }
+  .chip:hover { transform: translateY(-2px); box-shadow: 0 10px 22px -12px var(--chip-tint-40); }
+  .chip:active { transform: translateY(0) scale(.97); }
+  .chip .swatch {
+    width: 11px; height: 11px; border-radius: 50%;
+    background: var(--chip-hex);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--chip-hex) 18%, transparent);
+  }
+  .chip.active {
+    background: var(--chip-tint-20);
+    border-color: var(--chip-hex);
+    box-shadow: 0 10px 26px -12px var(--chip-tint-55);
+  }
+
+  .chip-red   { --chip-hex: var(--c-red);   --chip-tint-10: color-mix(in srgb, var(--c-red) 8%, white);   --chip-tint-20: color-mix(in srgb, var(--c-red) 16%, white); --chip-tint-25: color-mix(in srgb, var(--c-red) 22%, white); --chip-tint-40: color-mix(in srgb, var(--c-red) 40%, transparent); --chip-tint-55: color-mix(in srgb, var(--c-red) 55%, transparent); --chip-ink: color-mix(in srgb, var(--c-red) 75%, black); }
+  .chip-blue  { --chip-hex: var(--c-blue);  --chip-tint-10: color-mix(in srgb, var(--c-blue) 8%, white);  --chip-tint-20: color-mix(in srgb, var(--c-blue) 16%, white); --chip-tint-25: color-mix(in srgb, var(--c-blue) 22%, white); --chip-tint-40: color-mix(in srgb, var(--c-blue) 40%, transparent); --chip-tint-55: color-mix(in srgb, var(--c-blue) 55%, transparent); --chip-ink: color-mix(in srgb, var(--c-blue) 75%, black); }
+  .chip-green { --chip-hex: var(--c-green); --chip-tint-10: color-mix(in srgb, var(--c-green) 8%, white); --chip-tint-20: color-mix(in srgb, var(--c-green) 16%, white); --chip-tint-25: color-mix(in srgb, var(--c-green) 22%, white); --chip-tint-40: color-mix(in srgb, var(--c-green) 40%, transparent); --chip-tint-55: color-mix(in srgb, var(--c-green) 55%, transparent); --chip-ink: color-mix(in srgb, var(--c-green) 70%, black); }
+  .chip-pink  { --chip-hex: var(--c-pink);  --chip-tint-10: color-mix(in srgb, var(--c-pink) 8%, white);  --chip-tint-20: color-mix(in srgb, var(--c-pink) 16%, white); --chip-tint-25: color-mix(in srgb, var(--c-pink) 22%, white); --chip-tint-40: color-mix(in srgb, var(--c-pink) 40%, transparent); --chip-tint-55: color-mix(in srgb, var(--c-pink) 55%, transparent); --chip-ink: color-mix(in srgb, var(--c-pink) 75%, black); }
+  .chip-none  { --chip-hex: var(--c-none);  --chip-tint-10: #F2F1EE; --chip-tint-20: #E9E7E1; --chip-tint-25: #DAD7CE; --chip-tint-40: rgba(87,83,78,.35); --chip-tint-55: rgba(87,83,78,.5); --chip-ink: var(--ink-soft); }
+
+  /* ------------------------------------------------------------------ */
+  /* Search                                                              */
+  /* ------------------------------------------------------------------ */
+  .search-wrap { position: relative; margin-bottom: 22px; }
+  .search-wrap svg {
+    position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+    color: var(--ink-faint); width: 18px; height: 18px; pointer-events: none;
+  }
+  .search-box {
+    width: 100%;
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    padding: 15px 22px 15px 52px;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+    font-size: .95rem;
+    color: var(--ink);
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  .search-box::placeholder { color: var(--ink-faint); }
+  .search-box:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-soft);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Group header + progress                                            */
+  /* ------------------------------------------------------------------ */
+  .group-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px; flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .group-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .group-title { font-weight: 700; font-size: 1.25rem; color: var(--ink); margin: 0; }
+  .count-badge {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-ring);
+    color: color-mix(in srgb, var(--accent) 80%, black);
+    border-radius: var(--radius-full);
+    padding: 7px 18px;
+    font-family: 'Kanit', sans-serif;
+    font-weight: 600; font-size: .8rem;
+    transition: background .6s ease, border-color .6s ease, color .6s ease;
+    white-space: nowrap;
+  }
+
+  .progress-shell {
+    margin-bottom: 22px;
+  }
+  .progress-track {
+    height: 8px;
+    background: var(--line);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 60%, white));
+    border-radius: var(--radius-full);
+    transition: width .5s cubic-bezier(.4,0,.2,1), background .6s ease;
+  }
+  .progress-label {
+    display: flex; justify-content: space-between;
+    font-size: .74rem; color: var(--ink-faint); font-weight: 500;
+    margin-top: 7px;
+  }
+  .progress-label b { color: var(--ink-soft); font-weight: 600; }
+
+  /* ------------------------------------------------------------------ */
+  /* Student grid + cards                                               */
+  /* ------------------------------------------------------------------ */
+  .student-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  @media (min-width: 720px) {
+    .student-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 1180px) {
+    .student-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .student-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 16px 16px 16px 18px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    position: relative;
+    transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease, background .25s ease;
+  }
+  .student-card::before {
+    content: '';
+    position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px;
+    border-radius: var(--radius-full);
+    background: var(--line);
+    transition: background .3s ease, width .3s ease;
+  }
+  .student-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -14px rgba(0,0,0,.14); }
+  .student-card.present-card {
+    background: var(--accent-soft);
+    border-color: var(--accent-ring);
+  }
+  .student-card.present-card::before { background: var(--accent); width: 5px; }
+  .student-card.save-error {
+    border-color: #DC2626;
+    border-style: dashed;
+    background: color-mix(in srgb, #DC2626 5%, white);
+  }
+  .student-card.save-error::after {
+    content: 'ยังไม่บันทึก';
+    position: absolute;
+    top: -9px;
+    right: 14px;
+    background: #DC2626;
+    color: white;
+    font-size: .62rem;
+    font-weight: 700;
+    font-family: 'Kanit', sans-serif;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+  }
+  .student-card.is-unassigned {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .card-top-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+  }
+  .assign-row {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line);
+  }
+  .assign-label {
+    font-size: .7rem; color: var(--ink-faint); font-weight: 600; margin-right: 2px;
+    font-family: 'Kanit', sans-serif;
+  }
+  .assign-swatch {
+    appearance: none; cursor: pointer; border: none;
+    width: 28px; height: 28px; border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--swatch-hex);
+    transition: transform .15s ease;
+  }
+  .assign-swatch:hover:not(:disabled) { transform: scale(1.18); }
+  .assign-swatch:disabled { opacity: .45; cursor: default; }
+  .assign-swatch.sw-red   { background: var(--c-red);   --swatch-hex: var(--c-red); }
+  .assign-swatch.sw-blue  { background: var(--c-blue);  --swatch-hex: var(--c-blue); }
+  .assign-swatch.sw-green { background: var(--c-green); --swatch-hex: var(--c-green); }
+  .assign-swatch.sw-pink  { background: var(--c-pink);  --swatch-hex: var(--c-pink); }
+
+  .student-info { min-width: 0; flex: 1; }
+  .tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+  .tag {
+    font-size: .68rem; font-weight: 600;
+    background: var(--surface-soft);
+    color: var(--ink-soft);
+    padding: 3px 9px;
+    border-radius: var(--radius-full);
+    font-family: 'Kanit', sans-serif;
+    letter-spacing: .01em;
+  }
+  .student-name {
+    font-size: .92rem; font-weight: 600; color: var(--ink);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .toggle-btn {
+    appearance: none; border: none; cursor: pointer;
+    font-family: 'Kanit', sans-serif;
+    font-weight: 600; font-size: .74rem;
+    padding: 9px 16px;
+    border-radius: var(--radius-full);
+    background: var(--surface-soft);
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all .2s ease;
+  }
+  .toggle-btn:hover { border-color: var(--ink-faint); }
+  .toggle-btn.present {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    box-shadow: 0 6px 16px -6px var(--accent-ring);
+  }
+  .toggle-btn.present:hover { transform: scale(1.04); }
+  .toggle-btn svg { width: 13px; height: 13px; }
+
+  .icon-btn {
+    appearance: none; cursor: pointer; flex-shrink: 0;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    color: var(--ink-faint);
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s ease;
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .icon-btn svg { width: 15px; height: 15px; }
+
+  /* ------------------------------------------------------------------ */
+  /* States: empty / loading / error                                    */
+  /* ------------------------------------------------------------------ */
+  .state-block {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    background: var(--surface-soft);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-lg);
+  }
+  .state-block svg { width: 30px; height: 30px; color: var(--ink-faint); margin-bottom: 12px; }
+  .state-title { font-weight: 600; color: var(--ink-soft); font-size: .92rem; }
+  .state-sub { font-size: .78rem; color: var(--ink-faint); margin-top: 4px; }
+  .state-block.is-error { background: color-mix(in srgb, var(--c-red) 6%, white); border-color: color-mix(in srgb, var(--c-red) 25%, transparent); }
+  .state-block.is-error svg { color: var(--c-red); }
+  .state-block.is-error .state-title { color: color-mix(in srgb, var(--c-red) 70%, black); }
+
+  .loader-dots { display: flex; gap: 7px; justify-content: center; margin-bottom: 14px; }
+  .loader-dots span {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--accent);
+    animation: bounce 0.9s ease-in-out infinite;
+  }
+  .loader-dots span:nth-child(2) { animation-delay: .12s; }
+  .loader-dots span:nth-child(3) { animation-delay: .24s; }
+  @keyframes bounce { 0%,80%,100%{transform:scale(.4);opacity:.4} 40%{transform:scale(1);opacity:1} }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  @media (max-width: 480px) {
+    .student-card { padding: 14px; }
+    .toggle-btn { font-size: .7rem; padding: 8px 13px; }
+    .panel { padding: 18px; }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Export button                                                       */
+  /* ------------------------------------------------------------------ */
+  .export-btn {
+    appearance: none; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    color: var(--ink-soft);
+    padding: 9px 18px;
+    border-radius: var(--radius-full);
+    font-family: 'Kanit', sans-serif;
+    font-weight: 600; font-size: .8rem;
+    transition: all .2s ease;
+    white-space: nowrap;
+  }
+  .export-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: color-mix(in srgb, var(--accent) 80%, black);
+    box-shadow: 0 8px 20px -10px var(--accent-ring);
+    transform: translateY(-1px);
+  }
+  .export-btn:disabled { opacity: .55; cursor: default; transform: none; }
+  .export-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+  /* ------------------------------------------------------------------ */
+  /* Sync (unsaved attendance) banner                                    */
+  /* ------------------------------------------------------------------ */
+  .sync-banner {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    z-index: 50;
+    background: #DC2626;
+    color: white;
+    padding: 13px 16px 13px 20px;
+    border-radius: 18px;
+    box-shadow: 0 16px 36px -12px rgba(220,38,38,0.5);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    max-width: calc(100% - 32px);
+    font-size: .82rem;
+    font-weight: 500;
+    font-family: 'IBM Plex Sans Thai', sans-serif;
+  }
+  .sync-banner b { font-weight: 700; }
+  .sync-retry-btn {
+    appearance: none; cursor: pointer; border: none;
+    background: white;
+    color: #DC2626;
+    border-radius: var(--radius-full);
+    padding: 9px 18px;
+    font-family: 'Kanit', sans-serif;
+    font-weight: 700;
+    font-size: .78rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: transform .15s ease;
+  }
+  .sync-retry-btn:hover:not(:disabled) { transform: scale(1.04); }
+  .sync-retry-btn:disabled { opacity: .65; cursor: default; }
+  @media (max-width: 480px) {
+    .sync-banner { flex-direction: column; align-items: stretch; text-align: center; bottom: 14px; }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Dashboard                                                           */
+  /* ------------------------------------------------------------------ */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 18px 20px;
+    transition: background .3s ease, border-color .3s ease;
+  }
+  .stat-card .stat-label {
+    font-size: .74rem; color: var(--ink-faint); font-weight: 600; margin-bottom: 8px;
+  }
+  .stat-card .stat-value {
+    font-family: 'Kanit', sans-serif; font-size: 1.75rem; font-weight: 700; color: var(--ink); line-height: 1;
+  }
+  .stat-card .stat-sub { font-size: .72rem; color: var(--ink-soft); margin-top: 6px; }
+  .stat-card.accent-card { background: var(--accent-soft); border-color: var(--accent-ring); }
+  .stat-card.accent-card .stat-value { color: color-mix(in srgb, var(--accent) 80%, black); }
+
+  .color-summary-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+    gap: 12px;
+  }
+  .color-stat-card {
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    border: 1.5px solid var(--tint-25);
+    background: var(--tint-08);
+  }
+  .color-stat-card .cs-name {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'Kanit', sans-serif; font-weight: 700; font-size: .84rem;
+    margin-bottom: 10px; color: var(--ink);
+  }
+  .color-stat-card .cs-swatch { width: 10px; height: 10px; border-radius: 50%; background: var(--hex); flex-shrink: 0; }
+  .color-stat-card .cs-count { font-family: 'Kanit', sans-serif; font-size: 1.35rem; font-weight: 700; color: var(--ink); }
+  .color-stat-card .cs-total { font-size: .72rem; color: var(--ink-soft); margin-left: 3px; }
+  .color-stat-card .cs-track {
+    height: 6px; border-radius: var(--radius-full); background: var(--line);
+    margin-top: 9px; overflow: hidden;
+  }
+  .color-stat-card .cs-fill { height: 100%; background: var(--hex); border-radius: var(--radius-full); transition: width .5s ease; }
+
+  .trend-chart { display: flex; align-items: flex-end; gap: 5px; height: 130px; padding: 6px 2px 0; overflow-x: auto; }
+  .trend-bar-wrap {
+    flex: 1; min-width: 18px; display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-end; height: 100%; gap: 6px;
+  }
+  .trend-bar-track { flex: 1; display: flex; align-items: flex-end; width: 100%; }
+  .trend-bar {
+    width: 100%; max-width: 26px; margin: 0 auto;
+    border-radius: 6px 6px 3px 3px; background: var(--line); min-height: 3px;
+    transition: height .45s cubic-bezier(.4,0,.2,1);
+  }
+  .trend-bar.has-value { background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 55%, white)); }
+  .trend-bar.is-today { box-shadow: 0 0 0 2px var(--accent-ring); }
+  .trend-day-label { font-size: .6rem; color: var(--ink-faint); font-weight: 600; white-space: nowrap; }
+
+  .class-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .class-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  .class-table th {
+    text-align: left; font-family: 'Kanit', sans-serif; font-weight: 600;
+    color: var(--ink-soft); font-size: .68rem; text-transform: uppercase;
+    letter-spacing: .05em; padding: 10px 12px; border-bottom: 2px solid var(--line);
+    white-space: nowrap;
+  }
+  .class-table td { padding: 11px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .class-table tr:last-child td { border-bottom: none; }
+  .class-table .pct-track {
+    display: inline-block; width: 64px; height: 6px; background: var(--line);
+    border-radius: var(--radius-full); overflow: hidden; vertical-align: middle; margin-right: 8px;
+  }
+  .class-table .pct-fill { height: 100%; background: var(--accent); border-radius: var(--radius-full); }
+  .class-table .pct-num { font-family: 'Kanit', sans-serif; font-weight: 600; font-size: .76rem; color: var(--ink-soft); }
+
+  @media (max-width: 560px) {
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .color-summary-row { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="wrap header-inner">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 12.5l2 2 4-4.5"/>
+            <rect x="3.5" y="3.5" width="17" height="17" rx="5"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">เช็คชื่อ<b>กิจกรรมสี</b></h1>
+          <p class="brand-sub">ปีการศึกษา 2569</p>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <button id="exportBtn" onclick="exportExcel()" class="export-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span id="exportBtnLabel">ดาวน์โหลดสรุป Excel</span>
+        </button>
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          เชื่อมต่อแล้ว
+        </div>
+      </div>
+    </div>
+    <div class="wrap">
+      <nav class="tab-row">
+        <button class="tab-btn active" id="tabBtnCheckin" onclick="switchView('checkin')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12.5l2 2 4-4.5"/><rect x="3.5" y="3.5" width="17" height="17" rx="5"/></svg>
+          เช็คชื่อ
+        </button>
+        <button class="tab-btn" id="tabBtnDashboard" onclick="switchView('dashboard')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+          แดชบอร์ด
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- ==================== เช็คชื่อ VIEW ==================== -->
+    <section id="checkinView">
+
+      <section class="panel date-bar">
+        <button class="date-trigger" id="checkinDateTrigger">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span id="checkinDateLabel">วันนี้</span>
+        </button>
+        <button class="date-today-chip" id="checkinTodayChip" onclick="goToCheckinToday()" style="display:none;">กลับไปวันนี้</button>
+      </section>
+
+      <section class="panel">
+        <div class="panel-label">เลือกกลุ่มสี <span class="line"></span></div>
+        <div class="chip-row">
+          <button onclick="filterColor('แดง')" class="chip chip-red" id="chip-red"><span class="swatch"></span>สีแดง</button>
+          <button onclick="filterColor('น้ำเงิน')" class="chip chip-blue" id="chip-blue"><span class="swatch"></span>สีน้ำเงิน</button>
+          <button onclick="filterColor('เขียว')" class="chip chip-green" id="chip-green"><span class="swatch"></span>สีเขียว</button>
+          <button onclick="filterColor('ชมพู')" class="chip chip-pink" id="chip-pink"><span class="swatch"></span>สีชมพู</button>
+          <button onclick="filterColor('none')" class="chip chip-none" id="chip-gray"><span class="swatch"></span>ยังไม่ระบุ</button>
+        </div>
+      </section>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="searchInput" oninput="searchStudent()" placeholder="ค้นหาชื่อ, รหัสนักเรียน หรือชั้นเรียน..." class="search-box" />
+      </div>
+
+      <div class="group-bar">
+        <div class="group-title-row">
+          <h2 id="currentGroupTitle" class="group-title">กรุณาเลือกกลุ่มสี</h2>
+          <span id="pastEditBadge" class="past-edit-badge" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+            แก้ไขข้อมูลย้อนหลัง
+          </span>
+        </div>
+        <span id="studentCount" class="count-badge">0 คน</span>
+      </div>
+
+      <div class="progress-shell" id="progressShell" style="display:none;">
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-label">
+          <span>เช็คชื่อแล้ว <b id="progressText">0 จาก 0 คน</b></span>
+          <span id="progressPct">0%</span>
+        </div>
+      </div>
+
+      <div id="studentGrid" class="student-grid">
+        <div class="state-block">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <div class="state-title">เลือกกลุ่มสีด้านบนเพื่อแสดงรายชื่อ</div>
+          <div class="state-sub">ระบบพร้อมใช้งาน</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ==================== แดชบอร์ด VIEW ==================== -->
+    <section id="dashboardView" style="display:none;">
+
+      <section class="panel date-bar">
+        <button class="date-trigger" id="dashboardDateTrigger">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span id="dashboardDateLabel">วันนี้</span>
+        </button>
+
+        <button class="date-today-chip" id="dashboardTodayChip" onclick="goToDashboardToday()" style="display:none;">กลับไปวันนี้</button>
+      </section>
+
+      <div id="dashboardBody">
+        <div class="state-block">
+          <div class="loader-dots"><span></span><span></span><span></span></div>
+          <div class="state-title">กำลังโหลดข้อมูลสรุป...</div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <div id="syncBanner" class="sync-banner" style="display:none;">
+    <div>บันทึกไม่สำเร็จ <b id="syncCount">0</b> รายการ (อาจเพราะสัญญาณเน็ตหลุดชั่วคราว)</div>
+    <button id="syncRetryBtn" onclick="retryFailedSaves()" class="sync-retry-btn">ลองบันทึกใหม่</button>
+  </div>
+
+  <script>
+    /* ================================================================ */
+    /* Utilities: dates in Thai (พ.ศ.)                                   */
+    /* ================================================================ */
+    const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    const THAI_WEEKDAYS = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+
+    function todayStr() {
+      const d = new Date();
+      const offset = d.getTimezoneOffset() * 60000;
+      return new Date(d.getTime() - offset).toISOString().split('T')[0];
+    }
+    function toBuddhistYear(y) { return y + 543; }
+    function formatThaiDate(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return `${d} ${THAI_MONTHS[m - 1]} ${toBuddhistYear(y)}`;
+    }
+    function addDays(dateStr, delta) {
+      const d = new Date(dateStr + 'T00:00:00');
+      d.setDate(d.getDate() + delta);
+      return d.toISOString().split('T')[0];
+    }
+
+    /* ================================================================ */
+    /* Reusable calendar popover                                         */
+    /* ================================================================ */
+    let calState = null; // { viewYear, viewMonth, selected, onSelect, availableDates }
+
+    function openCalendarPopover(anchorEl, selectedDateStr, onSelect) {
+      const already = document.getElementById('calendarPopover');
+      if (already && already.dataset.anchorId === anchorEl.id) {
+        closeCalendarPopover();
+        return;
+      }
+      closeCalendarPopover();
+      anchorEl.classList.add('is-open');
+
+      const [y, m] = selectedDateStr.split('-').map(Number);
+      calState = { viewYear: y, viewMonth: m - 1, selected: selectedDateStr, onSelect, availableDates: new Set(), anchorId: anchorEl.id };
+
+      const pop = document.createElement('div');
+      pop.id = 'calendarPopover';
+      pop.className = 'calendar-popover';
+      pop.dataset.anchorId = anchorEl.id;
+      document.body.appendChild(pop);
+      positionPopover(pop, anchorEl);
+      renderCalendar();
+      fetchAvailableDatesForCalendar();
+
+      setTimeout(() => {
+        document.addEventListener('click', handleCalendarOutsideClick);
+        window.addEventListener('resize', closeCalendarPopover);
+      }, 0);
+    }
+
+    function positionPopover(pop, anchor) {
+      const rect = anchor.getBoundingClientRect();
+      const popWidth = 280;
+      let left = rect.left + window.scrollX;
+      const maxLeft = window.scrollX + document.documentElement.clientWidth - popWidth - 12;
+      if (left > maxLeft) left = Math.max(12, maxLeft);
+      const top = rect.bottom + window.scrollY + 8;
+      pop.style.top = top + 'px';
+      pop.style.left = left + 'px';
+    }
+
+    function handleCalendarOutsideClick(e) {
+      const pop = document.getElementById('calendarPopover');
+      if (!pop) return;
+      if (!pop.contains(e.target) && !e.target.closest('.date-trigger')) {
+        closeCalendarPopover();
+      }
+    }
+
+    function closeCalendarPopover() {
+      const pop = document.getElementById('calendarPopover');
+      if (pop) pop.remove();
+      document.querySelectorAll('.date-trigger.is-open').forEach(el => el.classList.remove('is-open'));
+      document.removeEventListener('click', handleCalendarOutsideClick);
+      window.removeEventListener('resize', closeCalendarPopover);
+    }
+
+    async function fetchAvailableDatesForCalendar() {
+      if (!calState) return;
+      const monthStr = `${calState.viewYear}-${String(calState.viewMonth + 1).padStart(2, '0')}`;
+      try {
+        const res = await fetch(`/api/dashboard/available-dates?month=${monthStr}`);
+        const dates = await res.json();
+        if (!calState) return;
+        calState.availableDates = new Set(dates);
+        renderCalendar();
+      } catch (e) {
+        // เงียบไว้ — ปฏิทินยังใช้เลือกวันได้ตามปกติแม้ไม่มีจุดบอกข้อมูล
+      }
+    }
+
+    function changeCalendarMonth(delta) {
+      if (!calState) return;
+      let m = calState.viewMonth + delta;
+      let y = calState.viewYear;
+      if (m < 0) { m = 11; y--; }
+      if (m > 11) { m = 0; y++; }
+      calState.viewMonth = m;
+      calState.viewYear = y;
+      renderCalendar();
+      fetchAvailableDatesForCalendar();
+    }
+
+    function renderCalendar() {
+      const pop = document.getElementById('calendarPopover');
+      if (!pop || !calState) return;
+      const { viewYear, viewMonth, selected, availableDates } = calState;
+      const today = todayStr();
+      const firstDay = new Date(viewYear, viewMonth, 1);
+      const startWeekday = firstDay.getDay();
+      const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+      const isViewingCurrentMonth = (viewYear === Number(today.split('-')[0]) && viewMonth === Number(today.split('-')[1]) - 1);
+
+      let cellsHtml = '';
+      for (let i = 0; i < startWeekday; i++) cellsHtml += `<div class="cal-cell is-empty"></div>`;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isFuture = dateStr > today;
+        const isToday = dateStr === today;
+        const isSelected = dateStr === selected;
+        const hasData = availableDates.has(dateStr);
+        let cls = 'cal-cell';
+        if (isFuture) cls += ' is-disabled';
+        if (isToday) cls += ' is-today';
+        if (isSelected) cls += ' is-selected';
+        cellsHtml += `<button type="button" class="${cls}" ${isFuture ? 'disabled' : ''} onclick="selectCalendarDate('${dateStr}')">${day}${hasData && !isSelected ? '<span class="cal-dot"></span>' : ''}</button>`;
+      }
+
+      pop.innerHTML = `
+        <div class="cal-header">
+          <button type="button" class="cal-nav" onclick="changeCalendarMonth(-1)" aria-label="เดือนก่อนหน้า">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="cal-title">${THAI_MONTHS[viewMonth]} ${toBuddhistYear(viewYear)}</div>
+          <button type="button" class="cal-nav" onclick="changeCalendarMonth(1)" aria-label="เดือนถัดไป" ${isViewingCurrentMonth ? 'disabled' : ''}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+        <div class="cal-weekdays">${THAI_WEEKDAYS.map(w => `<div>${w}</div>`).join('')}</div>
+        <div class="cal-grid">${cellsHtml}</div>
+        <button type="button" class="cal-today-btn" onclick="selectCalendarDate('${today}')">ไปวันนี้</button>
+      `;
+    }
+
+    function selectCalendarDate(dateStr) {
+      if (dateStr > todayStr()) return;
+      const cb = calState ? calState.onSelect : null;
+      closeCalendarPopover();
+      if (cb) cb(dateStr);
+    }
+
+    /* ================================================================ */
+    /* เช็คชื่อ VIEW                                                      */
+    /* ================================================================ */
+    let allGroupStudents = [];
+    let searchTimeout;
+    let currentColorFilter = null;
+    let checkinDate = todayStr();
+
+    const TEAM_HEX = {
+      'แดง': '#DC2626',
+      'น้ำเงิน': '#2563EB',
+      'เขียว': '#15803D',
+      'ชมพู': '#DB2777',
+      'none': '#57534E'
+    };
+
+    function setTeamAccent(colorName) {
+      document.documentElement.style.setProperty('--accent', TEAM_HEX[colorName] || '#57534E');
+    }
+
+    document.getElementById('checkinDateTrigger').addEventListener('click', function () {
+      openCalendarPopover(this, checkinDate, onCheckinDateSelected);
+    });
+
+    function shiftCheckinDate(delta) {
+      const newStr = addDays(checkinDate, delta);
+      if (newStr > todayStr()) return;
+      onCheckinDateSelected(newStr);
+    }
+    function goToCheckinToday() { onCheckinDateSelected(todayStr()); }
+
+    function onCheckinDateSelected(dateStr) {
+      checkinDate = dateStr;
+      updateCheckinDateUI();
+      if (currentColorFilter) filterColor(currentColorFilter);
+    }
+
+  function updateCheckinDateUI() {
+      const isToday = checkinDate === todayStr();
+      
+      const labelEl = document.getElementById('checkinDateLabel');
+      if (labelEl) labelEl.innerText = isToday ? `วันนี้ · ${formatThaiDate(checkinDate)}` : formatThaiDate(checkinDate);
+      
+      const nextBtn = document.getElementById('checkinNextBtn');
+      if (nextBtn) nextBtn.disabled = isToday;
+      
+      const todayChip = document.getElementById('checkinTodayChip');
+      if (todayChip) todayChip.style.display = isToday ? 'none' : 'inline-flex';
+      
+      const pastBadge = document.getElementById('pastEditBadge');
+      if (pastBadge) pastBadge.style.display = isToday ? 'none' : 'inline-flex';
+      
+      updateExportButtonLabel();
+    }
+
+  function updateExportButtonLabel() {
+      const label = document.getElementById('exportBtnLabel');
+      if (!label) return; // ป้องกัน Error หากปุ่มถูกลบไป
+      
+      const activeDate = currentView === 'dashboard' ? dashboardDate : checkinDate;
+      const isToday = activeDate === todayStr();
+      label.innerText = isToday ? 'ดาวน์โหลดสรุป Excel' : `ดาวน์โหลดสรุป Excel (${formatThaiDate(activeDate)})`;
+    }
+
+    async function filterColor(colorName) {
+      const titleElement = document.getElementById('currentGroupTitle');
+      const grid = document.getElementById('studentGrid');
+
+      setTeamAccent(colorName);
+      currentColorFilter = colorName;
+
+      const colorDisplay = colorName === 'none' ? 'ยังไม่ระบุสี' : `สี${colorName}`;
+      titleElement.innerText = `กลุ่ม: ${colorDisplay}`;
+
+      document.querySelectorAll('.chip').forEach(el => el.classList.remove('active'));
+      const chipMap = { 'แดง': 'chip-red', 'น้ำเงิน': 'chip-blue', 'เขียว': 'chip-green', 'ชมพู': 'chip-pink', 'none': 'chip-gray' };
+      const activeChip = document.getElementById(chipMap[colorName]);
+      if (activeChip) activeChip.classList.add('active');
+
+      document.getElementById('progressShell').style.display = 'none';
+
+      grid.innerHTML = `
+        <div class="state-block">
+          <div class="loader-dots"><span></span><span></span><span></span></div>
+          <div class="state-title">กำลังโหลดข้อมูล...</div>
+        </div>`;
+
+      setTimeout(async () => {
+        try {
+          const response = await fetch(`/api/students?color=${encodeURIComponent(colorName)}&date=${checkinDate}`);
+          allGroupStudents = await response.json();
+          renderStudents(allGroupStudents);
+          updateProgress();
+        } catch (error) {
+          console.error("Error:", error);
+          grid.innerHTML = `
+            <div class="state-block is-error">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <div class="state-title">เกิดข้อผิดพลาดในการดึงข้อมูล</div>
+              <div class="state-sub">ลองใหม่อีกครั้งภายหลัง</div>
+            </div>`;
+        }
+      }, 50);
+    }
+
+    function renderStudents(studentsList) {
+      const grid = document.getElementById('studentGrid');
+      document.getElementById('studentCount').innerText = `จำนวน ${studentsList.length} คน`;
+
+      if (studentsList.length === 0) {
+        grid.innerHTML = `
+          <div class="state-block">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <div class="state-title">ไม่พบข้อมูลนักเรียน</div>
+          </div>`;
+        return;
+      }
+
+      const isUnassignedView = currentColorFilter === 'none';
+
+      const htmlString = studentsList.map(student => {
+        const isPresent = student.status === 'present';
+        const cardClass = isPresent ? 'student-card present-card' : 'student-card';
+        const toggleClass = isPresent ? 'present' : 'absent';
+        const btnInner = isPresent
+          ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>เข้าสีแล้ว`
+          : `ไม่เข้าสี`;
+
+        const normColor = (student.color || '').replace(/^สี/, '');
+        const assignRowId = `assign-row-${student.id}`;
+        const swatchBtn = (colorName, swClass, label) => `
+              <button class="assign-swatch ${swClass}" onclick="assignColor('${student.id}', '${colorName}')" title="${label}" ${normColor === colorName ? 'disabled' : ''}></button>`;
+
+        const assignRow = `
+            <div class="assign-row" id="${assignRowId}" style="${isUnassignedView ? '' : 'display:none;'}">
+              <span class="assign-label">${isUnassignedView ? 'กำหนดสี:' : 'แก้ไขกลุ่มสี:'}</span>
+              ${swatchBtn('แดง', 'sw-red', 'สีแดง')}
+              ${swatchBtn('น้ำเงิน', 'sw-blue', 'สีน้ำเงิน')}
+              ${swatchBtn('เขียว', 'sw-green', 'สีเขียว')}
+              ${swatchBtn('ชมพู', 'sw-pink', 'สีชมพู')}
+            </div>`;
+
+        const editColorBtn = !isUnassignedView ? `
+              <button class="icon-btn" onclick="toggleColorEditor('${student.id}')" title="แก้ไขกลุ่มสี" aria-label="แก้ไขกลุ่มสี">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>
+              </button>` : '';
+
+        return `
+          <div id="student-card-${student.id}" class="${cardClass}${isUnassignedView ? ' is-unassigned' : ''}">
+            <div class="card-top-row">
+              <div class="student-info">
+                <div class="tag-row">
+                  <span class="tag">${student.student_id}</span>
+                  <span class="tag">${student.class || '-'}</span>
+                </div>
+                <h3 class="student-name">${student.name}</h3>
+              </div>
+              ${editColorBtn}
+              <button onclick="toggleAttendance('${student.id}', '${student.status}')" id="btn-${student.id}" class="toggle-btn ${toggleClass}">
+                ${btnInner}
+              </button>
+            </div>
+            ${assignRow}
+          </div>
+        `;
+      }).join('');
+
+      grid.innerHTML = htmlString;
+    }
+
+    function toggleColorEditor(id) {
+      const row = document.getElementById(`assign-row-${id}`);
+      if (!row) return;
+      row.style.display = (row.style.display === 'none' || !row.style.display) ? 'flex' : 'none';
+    }
+
+    async function assignColor(id, color) {
+      const card = document.getElementById(`student-card-${id}`);
+      const buttons = card ? card.querySelectorAll('.assign-swatch') : [];
+      buttons.forEach(b => b.disabled = true);
+
+      try {
+        const response = await fetch(`/api/students/${id}/color`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ color })
+        });
+        if (!response.ok) throw new Error('assign failed');
+
+        // เด็กคนนี้ไม่ใช่ "ยังไม่ระบุ" อีกแล้ว เอาออกจากลิสต์ปัจจุบันแบบมี fade
+        allGroupStudents = allGroupStudents.filter(s => s.id !== id);
+        if (card) {
+          card.style.transition = 'opacity .25s ease, transform .25s ease';
+          card.style.opacity = '0';
+          card.style.transform = 'scale(0.96)';
+          setTimeout(() => renderStudents(allGroupStudents), 220);
+        } else {
+          renderStudents(allGroupStudents);
+        }
+        updateProgress();
+      } catch (error) {
+        console.error('Assign color error:', error);
+        alert('กำหนดสีไม่สำเร็จ กรุณาลองใหม่');
+        buttons.forEach(b => b.disabled = false);
+      }
+    }
+
+    function updateProgress() {
+      const shell = document.getElementById('progressShell');
+      const total = allGroupStudents.length;
+      if (total === 0) { shell.style.display = 'none'; return; }
+      shell.style.display = 'block';
+      const present = allGroupStudents.filter(s => s.status === 'present').length;
+      const pct = Math.round((present / total) * 100);
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressText').innerText = `${present} จาก ${total} คน`;
+      document.getElementById('progressPct').innerText = pct + '%';
+    }
+
+    // เก็บรายการที่บันทึกไปยัง server ไม่สำเร็จ (id -> {status, date} ที่ต้องส่งซ้ำ)
+    const failedSaves = new Map();
+
+    function updateSyncBanner() {
+      const banner = document.getElementById('syncBanner');
+      const count = failedSaves.size;
+      if (count === 0) { banner.style.display = 'none'; return; }
+      banner.style.display = 'flex';
+      document.getElementById('syncCount').innerText = count;
+    }
+
+    // ยิง /api/check จริง + จัดการกรณีล้มเหลว ใช้ได้ทั้งตอนกดครั้งแรกและตอนลองใหม่
+    async function saveAttendance(id, status, date) {
+      const card = document.getElementById(`student-card-${id}`);
+      try {
+        const response = await fetch('/api/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, status, date })
+        });
+        if (!response.ok) throw new Error('server responded with error');
+        failedSaves.delete(id);
+        if (card) card.classList.remove('save-error');
+      } catch (error) {
+        console.error("Save error:", error);
+        failedSaves.set(id, { status, date });
+        if (card) card.classList.add('save-error');
+      }
+      updateSyncBanner();
+    }
+
+    async function retryFailedSaves() {
+      const btn = document.getElementById('syncRetryBtn');
+      btn.disabled = true;
+      btn.innerText = 'กำลังลองใหม่...';
+      const entries = Array.from(failedSaves.entries());
+      for (const [id, payload] of entries) {
+        await saveAttendance(id, payload.status, payload.date);
+      }
+      btn.disabled = false;
+      btn.innerText = 'ลองบันทึกใหม่';
+    }
+
+    function toggleAttendance(id, currentStatus) {
+      const newStatus = currentStatus === 'present' ? 'absent' : 'present';
+      const index = allGroupStudents.findIndex(s => s.id === id);
+      if (index !== -1) allGroupStudents[index].status = newStatus;
+
+      const card = document.getElementById(`student-card-${id}`);
+      const btn = document.getElementById(`btn-${id}`);
+
+      if (newStatus === 'present') {
+        card.className = 'student-card present-card';
+        btn.className = 'toggle-btn present';
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>เข้าสีแล้ว`;
+      } else {
+        card.className = 'student-card';
+        btn.className = 'toggle-btn absent';
+        btn.innerHTML = 'ไม่เข้าสี';
+      }
+      btn.setAttribute('onclick', `toggleAttendance('${id}', '${newStatus}')`);
+      updateProgress();
+
+      saveAttendance(id, newStatus, checkinDate);
+    }
+
+    async function exportExcel() {
+      const btn = document.getElementById('exportBtn');
+      const label = document.getElementById('exportBtnLabel');
+      const originalLabel = label.innerText;
+      const dateToExport = currentView === 'dashboard' ? dashboardDate : checkinDate;
+      btn.disabled = true;
+      label.innerText = 'กำลังสร้างไฟล์...';
+
+      try {
+        const response = await fetch(`/api/export?date=${dateToExport}`);
+        if (!response.ok) throw new Error('export failed');
+
+        const blob = await response.blob();
+        const disposition = response.headers.get('Content-Disposition') || '';
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        const filename = match ? decodeURIComponent(match[1]) : 'สรุปเข้าสี.xlsx';
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Export error:', error);
+        alert('ไม่สามารถสร้างไฟล์สรุปได้ กรุณาลองใหม่อีกครั้ง');
+      } finally {
+        btn.disabled = false;
+        label.innerText = originalLabel;
+        updateExportButtonLabel();
+      }
+    }
+
+    function searchStudent() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        const keyword = document.getElementById('searchInput').value.toLowerCase();
+        const filtered = allGroupStudents.filter(student =>
+          student.name.toLowerCase().includes(keyword) ||
+          student.student_id.toLowerCase().includes(keyword) ||
+          (student.class && student.class.toLowerCase().includes(keyword))
+        );
+        renderStudents(filtered);
+      }, 300);
+    }
+
+    /* ================================================================ */
+    /* Tabs                                                               */
+    /* ================================================================ */
+    let currentView = 'checkin';
+    let dashboardLoadedOnce = false;
+
+    function switchView(view) {
+      if (view === currentView) return;
+      currentView = view;
+      closeCalendarPopover();
+
+      document.getElementById('checkinView').style.display = view === 'checkin' ? '' : 'none';
+      document.getElementById('dashboardView').style.display = view === 'dashboard' ? '' : 'none';
+      document.getElementById('tabBtnCheckin').classList.toggle('active', view === 'checkin');
+      document.getElementById('tabBtnDashboard').classList.toggle('active', view === 'dashboard');
+
+      if (view === 'dashboard') {
+        setTeamAccent('none');
+        if (!dashboardLoadedOnce) {
+          dashboardLoadedOnce = true;
+          loadDashboard();
+        }
+      } else {
+        setTeamAccent(currentColorFilter);
+      }
+      updateExportButtonLabel();
+    }
+
+    /* ================================================================ */
+    /* แดชบอร์ด VIEW                                                      */
+    /* ================================================================ */
+    let dashboardDate = todayStr();
+
+    document.getElementById('dashboardDateTrigger').addEventListener('click', function () {
+      openCalendarPopover(this, dashboardDate, onDashboardDateSelected);
+    });
+
+    function shiftDashboardDate(delta) {
+      const newStr = addDays(dashboardDate, delta);
+      if (newStr > todayStr()) return;
+      onDashboardDateSelected(newStr);
+    }
+    function goToDashboardToday() { onDashboardDateSelected(todayStr()); }
+
+    function onDashboardDateSelected(dateStr) {
+      dashboardDate = dateStr;
+      updateDashboardDateUI();
+      loadDashboard();
+    }
+
+  function updateDashboardDateUI() {
+      const isToday = dashboardDate === todayStr();
+      
+      const labelEl = document.getElementById('dashboardDateLabel');
+      if (labelEl) labelEl.innerText = isToday ? `วันนี้ · ${formatThaiDate(dashboardDate)}` : formatThaiDate(dashboardDate);
+      
+      const nextBtn = document.getElementById('dashboardNextBtn');
+      if (nextBtn) nextBtn.disabled = isToday;
+      
+      const todayChip = document.getElementById('dashboardTodayChip');
+      if (todayChip) todayChip.style.display = isToday ? 'none' : 'inline-flex';
+      
+      updateExportButtonLabel();
+    }
+
+    const COLOR_META = {
+      'แดง':     { hex: '#DC2626', label: 'สีแดง' },
+      'น้ำเงิน': { hex: '#2563EB', label: 'สีน้ำเงิน' },
+      'เขียว':   { hex: '#15803D', label: 'สีเขียว' },
+      'ชมพู':    { hex: '#DB2777', label: 'สีชมพู' },
+      'none':    { hex: '#57534E', label: 'ยังไม่ระบุ' }
+    };
+
+    async function loadDashboard() {
+      updateDashboardDateUI();
+      const body = document.getElementById('dashboardBody');
+      body.innerHTML = `
+        <div class="state-block">
+          <div class="loader-dots"><span></span><span></span><span></span></div>
+          <div class="state-title">กำลังโหลดข้อมูลสรุป...</div>
+        </div>`;
+
+      try {
+        const [summaryRes, historyRes] = await Promise.all([
+          fetch(`/api/dashboard/summary?date=${dashboardDate}`),
+          fetch(`/api/dashboard/history?date=${dashboardDate}&days=14`)
+        ]);
+        if (!summaryRes.ok || !historyRes.ok) throw new Error('load failed');
+        const summary = await summaryRes.json();
+        const history = await historyRes.json();
+        renderDashboard(summary, history);
+      } catch (error) {
+        console.error('Dashboard load error:', error);
+        body.innerHTML = `
+          <div class="state-block is-error">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <div class="state-title">โหลดข้อมูลสรุปไม่สำเร็จ</div>
+            <div class="state-sub">ลองใหม่อีกครั้งภายหลัง</div>
+          </div>`;
+      }
+    }
+
+    function renderDashboard(summary, history) {
+      const body = document.getElementById('dashboardBody');
+      const pct = summary.totalStudents > 0 ? Math.round((summary.totalPresent / summary.totalStudents) * 100) : 0;
+
+      const colorCardsHtml = summary.byColor.map(c => {
+        const meta = COLOR_META[c.color] || COLOR_META['none'];
+        const cpct = c.total > 0 ? Math.round((c.present / c.total) * 100) : 0;
+        return `
+          <div class="color-stat-card" style="--hex:${meta.hex}; --tint-08: color-mix(in srgb, ${meta.hex} 8%, white); --tint-25: color-mix(in srgb, ${meta.hex} 22%, white);">
+            <div class="cs-name"><span class="cs-swatch"></span>${meta.label}</div>
+            <div><span class="cs-count">${c.present}</span><span class="cs-total"> / ${c.total} คน</span></div>
+            <div class="cs-track"><div class="cs-fill" style="width:${cpct}%"></div></div>
+          </div>`;
+      }).join('');
+
+      const trendBarsHtml = history.map(h => {
+        const heightPct = h.total > 0 ? Math.max(3, Math.round((h.present / h.total) * 100)) : 3;
+        const isToday = h.date === todayStr();
+        const dayNum = Number(h.date.split('-')[2]);
+        return `
+          <div class="trend-bar-wrap" title="${formatThaiDate(h.date)}: ${h.present}/${h.total} คน">
+            <div class="trend-bar-track">
+              <div class="trend-bar ${h.present > 0 ? 'has-value' : ''} ${isToday ? 'is-today' : ''}" style="height:${heightPct}%"></div>
+            </div>
+            <div class="trend-day-label">${dayNum}</div>
+          </div>`;
+      }).join('');
+
+      const classRowsHtml = summary.byClass.map(c => {
+        const cpct = c.total > 0 ? Math.round((c.present / c.total) * 100) : 0;
+        return `
+          <tr>
+            <td>${c.class}</td>
+            <td>${c.band}</td>
+            <td>${c.present} / ${c.total}</td>
+            <td><span class="pct-track"><span class="pct-fill" style="width:${cpct}%"></span></span><span class="pct-num">${cpct}%</span></td>
+          </tr>`;
+      }).join('');
+
+      body.innerHTML = `
+        <div class="summary-grid">
+          <div class="stat-card">
+            <div class="stat-label">นักเรียนทั้งหมด</div>
+            <div class="stat-value">${summary.totalStudents}</div>
+            <div class="stat-sub">คน</div>
+          </div>
+          <div class="stat-card accent-card">
+            <div class="stat-label">เข้าสีแล้ว</div>
+            <div class="stat-value">${summary.totalPresent}</div>
+            <div class="stat-sub">${pct}% ของทั้งหมด</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">ยังไม่เข้าสี</div>
+            <div class="stat-value">${summary.totalAbsent}</div>
+            <div class="stat-sub">คน</div>
+          </div>
+        </div>
+
+        <section class="panel">
+          <div class="panel-label">สรุปตามกลุ่มสี <span class="line"></span></div>
+          <div class="color-summary-row">${colorCardsHtml}</div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-label">แนวโน้มย้อนหลัง 14 วัน <span class="line"></span></div>
+          <div class="trend-chart">${trendBarsHtml}</div>
+        </section>
+
+        <section class="panel" style="margin-bottom:0;">
+          <div class="panel-label">สรุปตามห้องเรียน <span class="line"></span></div>
+          ${summary.byClass.length === 0 ? `
+            <div class="state-block" style="padding:36px 20px;">
+              <div class="state-title">ยังไม่มีข้อมูลนักเรียน</div>
+            </div>` : `
+            <div class="class-table-wrap">
+              <table class="class-table">
+                <thead>
+                  <tr><th>ห้องเรียน</th><th>ช่วงชั้น</th><th>เข้าสี / ทั้งหมด</th><th>สัดส่วน</th></tr>
+                </thead>
+                <tbody>${classRowsHtml}</tbody>
+              </table>
+            </div>`}
+        </section>
+      `;
+    }
+
+    /* ================================================================ */
+    /* Init                                                               */
+    /* ================================================================ */
+    updateCheckinDateUI();
+    updateDashboardDateUI();
+  </script>
+</body>
+</html>
