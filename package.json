@@ -20,6 +20,7 @@
     "dotenv": "^16.4.5",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
+    "mongodb": "^7.5.0",
     "mongoose": "^8.9.0",
     "node-cron": "^4.5.0"
   }
