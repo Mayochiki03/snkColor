@@ -752,6 +752,13 @@
   .tag-select-box.is-on svg { opacity: 1; }
 
   .tag-card-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+
+  /* แก้บั๊ก: การ์ดนักเรียนในหน้า "แท็กกีฬา" แน่นเกินไป (เช็คบ็อกซ์ + ป้ายรหัส/ห้อง + ปุ่มเช็คสถานะ
+     อยู่แถวเดียวกันหมด) ทำให้ในบางความกว้างหน้าจอ/ชื่อห้องยาว ๆ ปุ่มสถานะไปเบียดทับป้ายห้องเรียน
+     ให้ห่อบรรทัดใหม่แทนเมื่อพื้นที่ไม่พอ และดันปุ่มสถานะไปชิดขวาอย่างเป็นระเบียบ ไม่ทับกัน */
+  #tagStudentGrid .student-card { flex-wrap: wrap; row-gap: 10px; }
+  #tagStudentGrid .tag-card-left { flex: 1 1 220px; }
+  #tagStudentGrid .toggle-btn { margin-left: auto; }
   .sport-checked-pill {
     display: inline-flex; align-items: center; gap: 5px;
     font-size: .68rem; font-weight: 600; color: var(--ink-faint);
