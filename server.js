@@ -194,6 +194,7 @@ function normalizeColor(rawColor) {
 app.get('/api/students', async (req, res) => {
     try {
         const color = req.query.color;
+        const sportId = req.query.sport; // กรองเฉพาะนักเรียนที่ติดแท็กกีฬานี้ (ใช้ตอนเช็คชื่อกีฬาจากเมนูเช็คชื่อ ไม่ผูกกับกลุ่มสี)
         const date = parseValidDate(req.query.date) || getTodayDate();
 
         let filter = {};
@@ -201,6 +202,9 @@ app.get('/api/students', async (req, res) => {
             filter = { $or: [{ color: null }, { color: '' }, { color: 'none' }, { color: { $exists: false } }] };
         } else if (color) {
             filter = { $or: [{ color: color }, { color: `สี${color}` }] };
+        }
+        if (sportId) {
+            filter.sportTags = sportId;
         }
 
         const students = await Student.find(filter).sort({ class: 1, studentId: 1 }).populate('sportTags', 'name').lean();
@@ -476,6 +480,47 @@ app.get('/api/dashboard/available-dates', async (req, res) => {
         if (!/^\d{4}-\d{2}$/.test(month)) return res.json([]);
         const dates = await Attendance.distinct('date', { date: { $regex: `^${month}` } });
         res.json(dates.sort());
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --------------------------------------------------------
+// API 7.1: รายชื่อนักเรียนของ "ห้องเรียนเดียว" พร้อมสถานะเข้าสีของวันที่เลือก
+// ใช้ตอนครูกดเปิดดูรายชื่อในแถวห้องเรียนบนแดชบอร์ด (ไม่ต้องโหลด Excel)
+// --------------------------------------------------------
+app.get('/api/dashboard/class-students', async (req, res) => {
+    try {
+        const date = parseValidDate(req.query.date) || getTodayDate();
+        const className = (req.query.class || '').trim();
+
+        let filter;
+        if (!className || className === 'ไม่ระบุห้อง') {
+            filter = { $or: [{ class: null }, { class: '' }, { class: { $exists: false } }] };
+        } else {
+            filter = { class: className };
+        }
+
+        const students = await Student.find(filter).sort({ studentId: 1 }).lean();
+        const ids = students.map(s => s._id);
+        const attendances = await Attendance.find({ studentId: { $in: ids }, date }).lean();
+        const statusMap = new Map(attendances.map(a => [String(a.studentId), a.status]));
+
+        const result = students.map(s => ({
+            id: s._id,
+            student_id: s.studentId,
+            name: s.name,
+            color: s.color,
+            status: statusMap.get(String(s._id)) || 'absent'
+        }));
+
+        // เรียงให้เห็น "ยังไม่เข้าสี" ขึ้นก่อน เพื่อให้ครูตามตัวเด็กที่ยังไม่เข้าได้ไวขึ้น
+        result.sort((a, b) => {
+            if (a.status === b.status) return 0;
+            return a.status === 'present' ? 1 : -1;
+        });
+
+        res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
