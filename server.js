@@ -46,9 +46,12 @@ const studentSchema = new mongoose.Schema({
     studentId: { type: String, required: true, index: true },
     name: { type: String, required: true },
     class: { type: String, default: '' },
-    color: { type: String, default: '' }
+    color: { type: String, default: '' },
+    // แท็กกีฬา: นักเรียน 1 คนอยู่ได้หลายกีฬา (many-to-many กับ Sport)
+    sportTags: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Sport' }]
 }, { versionKey: false });
 studentSchema.index({ color: 1 });
+studentSchema.index({ sportTags: 1 });
 
 const attendanceSchema = new mongoose.Schema({
     studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
@@ -57,8 +60,32 @@ const attendanceSchema = new mongoose.Schema({
 }, { versionKey: false });
 attendanceSchema.index({ studentId: 1, date: 1 }, { unique: true });
 
+// --------------------------------------------------------
+// Sport: รายชื่อ "แท็กกีฬา" ที่ครูสร้างขึ้นเอง เช่น ฟุตบอล, วิ่ง 100 เมตร
+// --------------------------------------------------------
+const sportSchema = new mongoose.Schema({
+    name: { type: String, required: true, unique: true, trim: true }
+}, { versionKey: false });
+
+// --------------------------------------------------------
+// SportCheck: สถานะ "เช็คชื่อกีฬา" ของนักเรียน 1 คน ต่อ 1 วัน
+// ตั้งใจให้เป็นสถานะเดียวใช้ร่วมกันทุกกีฬา (ไม่ผูกกับกีฬาใดกีฬาหนึ่ง)
+// เพื่อให้เด็กที่อยู่หลายกิจกรรม พอถูกครูกีฬาใดกีฬาหนึ่งเช็คแล้ว
+// ครูกีฬาอื่นที่ค้นหาเจอคนเดียวกัน จะเห็นว่า "เช็คแล้ว" ทันที ไม่ต้องเช็คซ้ำ
+// เก็บ checkedBySport ไว้เป็นข้อมูลเสริม บอกว่าใครเป็นคนเช็คให้ (แสดงผลเฉยๆ)
+// --------------------------------------------------------
+const sportCheckSchema = new mongoose.Schema({
+    studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
+    date: { type: String, required: true, index: true },
+    status: { type: String, enum: ['checked', 'unchecked'], default: 'unchecked' },
+    checkedBySport: { type: mongoose.Schema.Types.ObjectId, ref: 'Sport', default: null }
+}, { versionKey: false });
+sportCheckSchema.index({ studentId: 1, date: 1 }, { unique: true });
+
 const Student = mongoose.model('Student', studentSchema);
 const Attendance = mongoose.model('Attendance', attendanceSchema);
+const Sport = mongoose.model('Sport', sportSchema);
+const SportCheck = mongoose.model('SportCheck', sportCheckSchema);
 
 // สร้างโฟลเดอร์สำหรับเก็บไฟล์ Excel (ถ้ายังไม่มี)
 const exportDir = path.join(__dirname, 'exports');
@@ -176,19 +203,29 @@ app.get('/api/students', async (req, res) => {
             filter = { $or: [{ color: color }, { color: `สี${color}` }] };
         }
 
-        const students = await Student.find(filter).sort({ class: 1, studentId: 1 }).lean();
+        const students = await Student.find(filter).sort({ class: 1, studentId: 1 }).populate('sportTags', 'name').lean();
         const ids = students.map(s => s._id);
         const attendances = await Attendance.find({ studentId: { $in: ids }, date }).lean();
         const statusMap = new Map(attendances.map(a => [String(a.studentId), a.status]));
 
-        const result = students.map(s => ({
-            id: s._id,
-            student_id: s.studentId,
-            name: s.name,
-            class: s.class,
-            color: s.color,
-            status: statusMap.get(String(s._id)) || 'absent'
-        }));
+        // สถานะเช็คชื่อกีฬา (ใช้ร่วมกันทุกแท็ก) ของวันที่เลือก
+        const sportChecks = await SportCheck.find({ studentId: { $in: ids }, date }).populate('checkedBySport', 'name').lean();
+        const sportCheckMap = new Map(sportChecks.map(sc => [String(sc.studentId), sc]));
+
+        const result = students.map(s => {
+            const sc = sportCheckMap.get(String(s._id));
+            return {
+                id: s._id,
+                student_id: s.studentId,
+                name: s.name,
+                class: s.class,
+                color: s.color,
+                status: statusMap.get(String(s._id)) || 'absent',
+                sportTags: (s.sportTags || []).map(t => ({ id: t._id, name: t.name })),
+                sportChecked: !!sc && sc.status === 'checked',
+                sportCheckedBy: (sc && sc.checkedBySport) ? sc.checkedBySport.name : null
+            };
+        });
 
         res.json(result);
     } catch (err) {
@@ -235,6 +272,118 @@ app.post('/api/students/:id/color', async (req, res) => {
         const updated = await Student.findByIdAndUpdate(id, { color }, { new: true });
         if (!updated) return res.status(404).json({ error: 'ไม่พบนักเรียนคนนี้' });
         res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --------------------------------------------------------
+// API 4.1: ดึงรายการแท็กกีฬาทั้งหมด (พร้อมจำนวนนักเรียนที่ติดแท็กแล้ว)
+// --------------------------------------------------------
+app.get('/api/sports', async (req, res) => {
+    try {
+        const sports = await Sport.find({}).sort({ name: 1 }).lean();
+        const counts = await Student.aggregate([
+            { $unwind: '$sportTags' },
+            { $group: { _id: '$sportTags', count: { $sum: 1 } } }
+        ]);
+        const countMap = new Map(counts.map(c => [String(c._id), c.count]));
+        res.json(sports.map(s => ({ id: s._id, name: s.name, studentCount: countMap.get(String(s._id)) || 0 })));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --------------------------------------------------------
+// API 4.2: สร้างแท็กกีฬาใหม่
+// --------------------------------------------------------
+app.post('/api/sports', async (req, res) => {
+    try {
+        const name = String(req.body.name || '').trim();
+        if (!name) return res.status(400).json({ error: 'กรุณาระบุชื่อกีฬา' });
+
+        const existing = await Sport.findOne({ name });
+        if (existing) return res.status(409).json({ error: 'มีแท็กกีฬาชื่อนี้อยู่แล้ว' });
+
+        const sport = await Sport.create({ name });
+        res.json({ id: sport._id, name: sport.name, studentCount: 0 });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --------------------------------------------------------
+// API 4.3: ลบแท็กกีฬา (ถอดแท็กนี้ออกจากนักเรียนทุกคนที่เคยติดไว้ด้วย)
+// --------------------------------------------------------
+app.delete('/api/sports/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deleted = await Sport.findByIdAndDelete(id);
+        if (!deleted) return res.status(404).json({ error: 'ไม่พบแท็กกีฬานี้' });
+
+        await Student.updateMany({ sportTags: id }, { $pull: { sportTags: id } });
+        // ประวัติการเช็คชื่อยังเก็บไว้ตามเดิม แค่เอาชื่อกีฬาที่ลบไปแล้วออกจากข้อมูลอ้างอิง
+        await SportCheck.updateMany({ checkedBySport: id }, { $set: { checkedBySport: null } });
+
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --------------------------------------------------------
+// API 4.4: เพิ่ม/ถอด แท็กกีฬาให้นักเรียนคนหนึ่ง (ใช้ตอนติ๊กเลือกในหน้าแท็กกีฬา)
+// --------------------------------------------------------
+app.post('/api/students/:id/sports', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { sportId, action } = req.body;
+
+        if (!sportId || !['add', 'remove'].includes(action)) {
+            return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' });
+        }
+
+        const update = action === 'add'
+            ? { $addToSet: { sportTags: sportId } }
+            : { $pull: { sportTags: sportId } };
+
+        const updated = await Student.findByIdAndUpdate(id, update, { new: true }).populate('sportTags', 'name');
+        if (!updated) return res.status(404).json({ error: 'ไม่พบนักเรียนคนนี้' });
+
+        res.json({ success: true, sportTags: updated.sportTags.map(t => ({ id: t._id, name: t.name })) });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --------------------------------------------------------
+// API 4.5: เช็คชื่อ/ยกเลิกเช็คชื่อกีฬา (สถานะเดียวใช้ร่วมกันทุกกีฬาต่อวัน)
+// เด็กที่อยู่หลายกิจกรรม พอถูกครูกีฬาไหนเช็คแล้ว ครูกีฬาอื่นค้นหาเจอ
+// จะเห็นว่า "เช็คแล้ว" ทันที ไม่ต้องเช็คซ้ำ
+// --------------------------------------------------------
+app.post('/api/sportcheck', async (req, res) => {
+    try {
+        const { studentId, sportId, status } = req.body;
+        const date = parseValidDate(req.body.date) || getTodayDate();
+
+        if (!studentId || !['checked', 'unchecked'].includes(status)) {
+            return res.status(400).json({ error: 'ข้อมูลไม่ถูกต้อง' });
+        }
+
+        const update = { studentId, date, status };
+        update.checkedBySport = status === 'checked' ? (sportId || null) : null;
+
+        const doc = await SportCheck.findOneAndUpdate(
+            { studentId, date },
+            update,
+            { upsert: true, new: true }
+        ).populate('checkedBySport', 'name');
+
+        res.json({
+            success: true,
+            sportChecked: doc.status === 'checked',
+            sportCheckedBy: doc.checkedBySport ? doc.checkedBySport.name : null
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

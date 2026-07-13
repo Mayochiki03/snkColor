@@ -694,6 +694,71 @@
     .summary-grid { grid-template-columns: repeat(2, 1fr); }
     .color-summary-row { grid-template-columns: repeat(2, 1fr); }
   }
+
+  /* ------------------------------------------------------------------ */
+  /* หน้าแท็กกีฬา                                                        */
+  /* ------------------------------------------------------------------ */
+  .tag-create-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .tag-create-row .search-box { flex: 1; }
+  @media (max-width: 520px) {
+    .tag-create-row { flex-direction: column; }
+    .tag-create-row .export-btn { justify-content: center; }
+  }
+
+  .sport-tag-list { display: flex; flex-wrap: wrap; gap: 10px; }
+  .sport-tag-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 8px 9px 16px;
+    border-radius: var(--radius-full);
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    font-family: 'Kanit', sans-serif; font-weight: 600; font-size: .82rem;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all .2s ease;
+  }
+  .sport-tag-chip:hover { border-color: var(--ink-faint); }
+  .sport-tag-chip.active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    color: color-mix(in srgb, var(--accent) 80%, black);
+  }
+  .sport-tag-chip .stc-count {
+    font-size: .68rem; font-weight: 600; color: var(--ink-faint);
+    background: var(--surface-soft);
+    padding: 1px 8px; border-radius: var(--radius-full);
+  }
+  .sport-tag-chip.active .stc-count { background: color-mix(in srgb, var(--accent) 18%, white); color: color-mix(in srgb, var(--accent) 80%, black); }
+  .sport-tag-chip .stc-del {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: transparent; color: var(--ink-faint);
+    transition: background .2s ease, color .2s ease;
+  }
+  .sport-tag-chip .stc-del:hover { background: color-mix(in srgb, #DC2626 12%, white); color: #DC2626; }
+  .sport-tag-chip .stc-del svg { width: 12px; height: 12px; }
+
+  .tag-select-box {
+    width: 22px; height: 22px; border-radius: 7px;
+    border: 2px solid var(--line);
+    background: var(--surface);
+    cursor: pointer; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: all .2s ease;
+    appearance: none; padding: 0;
+  }
+  .tag-select-box svg { width: 13px; height: 13px; color: white; opacity: 0; transition: opacity .15s ease; }
+  .tag-select-box.is-on { background: var(--accent); border-color: var(--accent); }
+  .tag-select-box.is-on svg { opacity: 1; }
+
+  .tag-card-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .sport-checked-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: .68rem; font-weight: 600; color: var(--ink-faint);
+    margin-top: 6px;
+  }
+  .sport-checked-pill.is-checked { color: color-mix(in srgb, var(--accent) 75%, black); }
+  .sport-checked-pill svg { width: 11px; height: 11px; }
 </style>
 </head>
 <body>
@@ -734,6 +799,10 @@
         <button class="tab-btn" id="tabBtnDashboard" onclick="switchView('dashboard')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
           แดชบอร์ด
+        </button>
+        <button class="tab-btn" id="tabBtnTags" onclick="switchView('tags')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L11 3.83A2 2 0 0 0 9.59 3.24H4a1 1 0 0 0-1 1v5.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.83 0l5.59-5.59a2 2 0 0 0 0-2.82z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
+          แท็กกีฬา
         </button>
       </nav>
     </div>
@@ -818,6 +887,55 @@
           <div class="state-title">กำลังโหลดข้อมูลสรุป...</div>
         </div>
       </div>
+
+    </section>
+
+    <!-- ==================== แท็กกีฬา VIEW ==================== -->
+    <section id="tagView" style="display:none;">
+
+      <section class="panel">
+        <div class="panel-label">สร้าง/จัดการแท็กกีฬา <span class="line"></span></div>
+        <div class="tag-create-row">
+          <input type="text" id="newSportInput" placeholder="ชื่อกีฬาใหม่ เช่น ฟุตบอล, วิ่ง 100 เมตร, เปตอง" class="search-box" style="margin-bottom:0;" />
+          <button onclick="createSport()" id="createSportBtn" class="export-btn" style="flex-shrink:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            เพิ่มแท็ก
+          </button>
+        </div>
+        <div id="sportTagList" class="sport-tag-list">
+          <div class="state-sub" style="padding:8px 0;">กำลังโหลดรายการแท็ก...</div>
+        </div>
+      </section>
+
+      <section class="panel" id="sportAssignPanel" style="display:none;">
+        <div class="panel-label">รายชื่อในแท็ก: <b id="activeSportName" style="color:var(--ink);"></b> <span class="line"></span></div>
+
+        <div class="chip-row">
+          <button onclick="filterTagColor('แดง')" class="chip chip-red" id="tagchip-red"><span class="swatch"></span>สีแดง</button>
+          <button onclick="filterTagColor('น้ำเงิน')" class="chip chip-blue" id="tagchip-blue"><span class="swatch"></span>สีน้ำเงิน</button>
+          <button onclick="filterTagColor('เขียว')" class="chip chip-green" id="tagchip-green"><span class="swatch"></span>สีเขียว</button>
+          <button onclick="filterTagColor('ชมพู')" class="chip chip-pink" id="tagchip-pink"><span class="swatch"></span>สีชมพู</button>
+          <button onclick="filterTagColor('none')" class="chip chip-none" id="tagchip-gray"><span class="swatch"></span>ยังไม่ระบุ</button>
+        </div>
+
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="tagSearchInput" oninput="searchTagStudent()" placeholder="ค้นหาชื่อ, รหัสนักเรียน หรือชั้นเรียน..." class="search-box" />
+        </div>
+
+        <div class="group-bar">
+          <h2 class="group-title" style="font-size:1rem;">เลือกนักกีฬาโดยติ๊กช่อง แล้วกดเช็คชื่อได้เลยเมื่อมาถึง</h2>
+          <span id="tagStudentCount" class="count-badge">0 คน</span>
+        </div>
+
+        <div id="tagStudentGrid" class="student-grid">
+          <div class="state-block">
+            <div class="state-title">เลือกกลุ่มสีด้านบนเพื่อแสดงรายชื่อ</div>
+          </div>
+        </div>
+      </section>
 
     </section>
 
@@ -1075,7 +1193,10 @@
         try {
           const response = await fetch(`/api/students?color=${encodeURIComponent(colorName)}&date=${checkinDate}`);
           allGroupStudents = await response.json();
-          renderStudents(allGroupStudents);
+          // แก้บั๊ก: เดิมสลับกลุ่มสีแล้วคำค้นหาที่พิมพ์ค้างไว้จะไม่ถูกใช้กรองทันที
+          // ต้องลบข้อความแล้วพิมพ์ใหม่ถึงจะกรอง ตอนนี้พอโหลดกลุ่มสีใหม่เสร็จ
+          // จะกรองด้วยคำค้นหาเดิมให้อัตโนมัติเลย
+          applyCurrentSearch();
           updateProgress();
         } catch (error) {
           console.error("Error:", error);
@@ -1308,9 +1429,9 @@
       }
     }
 
-    function searchStudent() {
+    function searchStudent(immediate) {
       clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(() => {
+      const runFilter = () => {
         const keyword = document.getElementById('searchInput').value.toLowerCase();
         const filtered = allGroupStudents.filter(student =>
           student.name.toLowerCase().includes(keyword) ||
@@ -1318,7 +1439,23 @@
           (student.class && student.class.toLowerCase().includes(keyword))
         );
         renderStudents(filtered);
-      }, 300);
+      };
+      if (immediate) {
+        runFilter();
+      } else {
+        searchTimeout = setTimeout(runFilter, 300);
+      }
+    }
+
+    // เรียกใช้ตอนโหลดกลุ่มสีใหม่เสร็จ: ถ้าในช่องค้นหามีคำอยู่ ให้กรองด้วยคำนั้นทันที
+    // ถ้าช่องว่างอยู่ ก็แสดงรายชื่อทั้งกลุ่มตามปกติ
+    function applyCurrentSearch() {
+      const keyword = document.getElementById('searchInput').value;
+      if (keyword && keyword.trim() !== '') {
+        searchStudent(true);
+      } else {
+        renderStudents(allGroupStudents);
+      }
     }
 
     /* ================================================================ */
@@ -1334,14 +1471,22 @@
 
       document.getElementById('checkinView').style.display = view === 'checkin' ? '' : 'none';
       document.getElementById('dashboardView').style.display = view === 'dashboard' ? '' : 'none';
+      document.getElementById('tagView').style.display = view === 'tags' ? '' : 'none';
       document.getElementById('tabBtnCheckin').classList.toggle('active', view === 'checkin');
       document.getElementById('tabBtnDashboard').classList.toggle('active', view === 'dashboard');
+      document.getElementById('tabBtnTags').classList.toggle('active', view === 'tags');
 
       if (view === 'dashboard') {
         setTeamAccent('none');
         if (!dashboardLoadedOnce) {
           dashboardLoadedOnce = true;
           loadDashboard();
+        }
+      } else if (view === 'tags') {
+        setTeamAccent(activeSportColorFilter || 'none');
+        if (!sportsLoadedOnce) {
+          sportsLoadedOnce = true;
+          loadSportsList();
         }
       } else {
         setTeamAccent(currentColorFilter);
@@ -1509,6 +1654,247 @@
             </div>`}
         </section>
       `;
+    }
+
+    /* ================================================================ */
+    /* แท็กกีฬา VIEW                                                      */
+    /* ================================================================ */
+    let sportsLoadedOnce = false;
+    let sportsList = [];
+    let activeSportId = null;
+    let activeSportColorFilter = null;
+    let allTagColorStudents = [];
+    let tagSearchTimeout;
+    // ใช้วันปัจจุบันเสมอ เพราะการเช็คชื่อกีฬาใช้งานระหว่างกิจกรรมจริง ไม่เน้นแก้ย้อนหลัง
+    const sportCheckDate = todayStr();
+
+    async function loadSportsList() {
+      const listEl = document.getElementById('sportTagList');
+      try {
+        const res = await fetch('/api/sports');
+        sportsList = await res.json();
+        renderSportTagList();
+      } catch (err) {
+        console.error('Load sports error:', err);
+        listEl.innerHTML = `<div class="state-sub" style="padding:8px 0; color:#DC2626;">โหลดรายการแท็กไม่สำเร็จ ลองรีเฟรชหน้าใหม่</div>`;
+      }
+    }
+
+    function renderSportTagList() {
+      const listEl = document.getElementById('sportTagList');
+      if (sportsList.length === 0) {
+        listEl.innerHTML = `<div class="state-sub" style="padding:8px 0;">ยังไม่มีแท็กกีฬา เพิ่มแท็กแรกได้จากช่องด้านบน</div>`;
+        return;
+      }
+      listEl.innerHTML = sportsList.map(sport => `
+        <span class="sport-tag-chip ${sport.id === activeSportId ? 'active' : ''}" onclick="selectSportTag('${sport.id}', ${JSON.stringify(sport.name)})">
+          ${sport.name}
+          <span class="stc-count">${sport.studentCount} คน</span>
+          <span class="stc-del" onclick="deleteSportTag(event, '${sport.id}', ${JSON.stringify(sport.name)})" title="ลบแท็กนี้">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </span>
+        </span>
+      `).join('');
+    }
+
+    async function createSport() {
+      const input = document.getElementById('newSportInput');
+      const name = input.value.trim();
+      if (!name) return;
+      const btn = document.getElementById('createSportBtn');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/sports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'สร้างแท็กไม่สำเร็จ');
+        input.value = '';
+        await loadSportsList();
+        selectSportTag(data.id, data.name);
+      } catch (err) {
+        alert(err.message || 'สร้างแท็กไม่สำเร็จ กรุณาลองใหม่');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function deleteSportTag(evt, sportId, sportName) {
+      evt.stopPropagation();
+      if (!confirm(`ลบแท็ก "${sportName}" ใช่หรือไม่? รายชื่อที่เคยติดแท็กนี้จะถูกถอดออกทั้งหมด`)) return;
+      try {
+        const res = await fetch(`/api/sports/${sportId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('delete failed');
+        if (activeSportId === sportId) {
+          activeSportId = null;
+          document.getElementById('sportAssignPanel').style.display = 'none';
+        }
+        await loadSportsList();
+      } catch (err) {
+        alert('ลบแท็กไม่สำเร็จ กรุณาลองใหม่');
+      }
+    }
+
+    function selectSportTag(sportId, sportName) {
+      activeSportId = sportId;
+      document.getElementById('activeSportName').innerText = sportName;
+      document.getElementById('sportAssignPanel').style.display = 'block';
+      renderSportTagList();
+      if (activeSportColorFilter) filterTagColor(activeSportColorFilter);
+    }
+
+    async function filterTagColor(colorName) {
+      activeSportColorFilter = colorName;
+      setTeamAccent(colorName);
+
+      document.querySelectorAll('#sportAssignPanel .chip').forEach(el => el.classList.remove('active'));
+      const chipMap = { 'แดง': 'tagchip-red', 'น้ำเงิน': 'tagchip-blue', 'เขียว': 'tagchip-green', 'ชมพู': 'tagchip-pink', 'none': 'tagchip-gray' };
+      const activeChip = document.getElementById(chipMap[colorName]);
+      if (activeChip) activeChip.classList.add('active');
+
+      const grid = document.getElementById('tagStudentGrid');
+      grid.innerHTML = `
+        <div class="state-block">
+          <div class="loader-dots"><span></span><span></span><span></span></div>
+          <div class="state-title">กำลังโหลดข้อมูล...</div>
+        </div>`;
+
+      try {
+        const response = await fetch(`/api/students?color=${encodeURIComponent(colorName)}&date=${sportCheckDate}`);
+        allTagColorStudents = await response.json();
+        applyTagSearch();
+      } catch (err) {
+        console.error('Load tag students error:', err);
+        grid.innerHTML = `
+          <div class="state-block is-error">
+            <div class="state-title">เกิดข้อผิดพลาดในการดึงข้อมูล</div>
+            <div class="state-sub">ลองใหม่อีกครั้งภายหลัง</div>
+          </div>`;
+      }
+    }
+
+    function searchTagStudent(immediate) {
+      clearTimeout(tagSearchTimeout);
+      const run = () => applyTagSearch();
+      if (immediate) run(); else tagSearchTimeout = setTimeout(run, 300);
+    }
+
+    function applyTagSearch() {
+      const keyword = (document.getElementById('tagSearchInput').value || '').toLowerCase().trim();
+      const filtered = keyword ? allTagColorStudents.filter(s =>
+        s.name.toLowerCase().includes(keyword) ||
+        s.student_id.toLowerCase().includes(keyword) ||
+        (s.class && s.class.toLowerCase().includes(keyword))
+      ) : allTagColorStudents;
+      renderTagStudents(filtered);
+    }
+
+    function renderTagStudents(list) {
+      const grid = document.getElementById('tagStudentGrid');
+      document.getElementById('tagStudentCount').innerText = `จำนวน ${list.length} คน`;
+
+      if (list.length === 0) {
+        grid.innerHTML = `
+          <div class="state-block">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <div class="state-title">ไม่พบข้อมูลนักเรียน</div>
+          </div>`;
+        return;
+      }
+
+      grid.innerHTML = list.map(student => {
+        const isTagged = (student.sportTags || []).some(t => t.id === activeSportId);
+        const isChecked = !!student.sportChecked;
+        const checkedByOther = isChecked && student.sportCheckedBy && student.sportCheckedBy !== document.getElementById('activeSportName').innerText;
+
+        const toggleInner = isChecked
+          ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>เช็คแล้ว`
+          : `ยังไม่เช็ค`;
+
+        const checkedPill = isChecked ? `
+              <span class="sport-checked-pill is-checked">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                ${checkedByOther ? `เช็คแล้วโดยกีฬา "${student.sportCheckedBy}" (ไม่ต้องเช็คซ้ำ)` : 'เช็คชื่อแล้ว'}
+              </span>` : '';
+
+        return `
+          <div id="tag-student-card-${student.id}" class="student-card${isChecked ? ' present-card' : ''}" style="align-items:flex-start;">
+            <div class="tag-card-left">
+              <button type="button" class="tag-select-box ${isTagged ? 'is-on' : ''}" id="tag-select-${student.id}"
+                onclick="toggleSportAssign('${student.id}')" title="ติ๊กเพื่อใส่แท็กนี้ให้นักเรียนคนนี้">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+              <div class="student-info">
+                <div class="tag-row">
+                  <span class="tag">${student.student_id}</span>
+                  <span class="tag">${student.class || '-'}</span>
+                </div>
+                <h3 class="student-name">${student.name}</h3>
+                ${checkedPill}
+              </div>
+            </div>
+            <button onclick="toggleSportCheck('${student.id}')" id="tag-btn-${student.id}" class="toggle-btn ${isChecked ? 'present' : 'absent'}">
+              ${toggleInner}
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function toggleSportAssign(studentId) {
+      if (!activeSportId) return;
+      const idx = allTagColorStudents.findIndex(s => s.id === studentId);
+      if (idx === -1) return;
+      const student = allTagColorStudents[idx];
+      const isTagged = (student.sportTags || []).some(t => t.id === activeSportId);
+      const action = isTagged ? 'remove' : 'add';
+
+      const box = document.getElementById(`tag-select-${studentId}`);
+      if (box) box.classList.toggle('is-on', !isTagged);
+
+      try {
+        const res = await fetch(`/api/students/${studentId}/sports`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sportId: activeSportId, action })
+        });
+        if (!res.ok) throw new Error('assign failed');
+        const data = await res.json();
+        student.sportTags = data.sportTags;
+        // อัปเดตจำนวนคนในแท็กที่แสดงบน chip ด้านบน
+        loadSportsList();
+      } catch (err) {
+        console.error('Toggle sport assign error:', err);
+        if (box) box.classList.toggle('is-on', isTagged); // revert UI
+        alert('บันทึกแท็กไม่สำเร็จ กรุณาลองใหม่');
+      }
+    }
+
+    async function toggleSportCheck(studentId) {
+      const idx = allTagColorStudents.findIndex(s => s.id === studentId);
+      if (idx === -1) return;
+      const student = allTagColorStudents[idx];
+      const newStatus = student.sportChecked ? 'unchecked' : 'checked';
+
+      try {
+        const res = await fetch('/api/sportcheck', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentId, sportId: activeSportId, date: sportCheckDate, status: newStatus })
+        });
+        if (!res.ok) throw new Error('check failed');
+        const data = await res.json();
+        student.sportChecked = data.sportChecked;
+        student.sportCheckedBy = data.sportCheckedBy;
+        applyTagSearch();
+      } catch (err) {
+        console.error('Toggle sport check error:', err);
+        alert('บันทึกการเช็คชื่อไม่สำเร็จ กรุณาลองใหม่');
+      }
     }
 
     /* ================================================================ */
