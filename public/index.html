@@ -831,6 +831,7 @@
     border-style: dashed;
   }
   .chip-sport.active { border-style: solid; color: color-mix(in srgb, var(--accent) 80%, black); }
+  .chip-sport .stc-count { font-weight: 600; opacity: .7; margin-left: 2px; }
 
   /* ------------------------------------------------------------------ */
   /* ขั้นตอนแบบมีตัวเลข (ใช้ในหน้าแท็กกีฬา ให้ผู้สูงวัยตามได้ง่าย)             */
@@ -1263,7 +1264,9 @@
     let currentColorFilter = null;
     let checkinDate = todayStr();
 
-    // โหมดของหน้าเช็คชื่อ: 'idle' (ยังไม่เลือกอะไร) | 'color' (เลือกกลุ่มสี) | 'sport' (เลือก/ค้นหากีฬา, ดูได้ทุกกลุ่มสี)
+    // โหมดของหน้าเช็คชื่อ: 'idle' (ยังไม่เลือกอะไร) | 'color' (เลือกกลุ่มสีแล้ว)
+    // หมายเหตุ: แท็กกีฬา (เช่น ROV) ไม่ใช่ "โหมด" ที่ข้ามกลุ่มสีได้ แต่เป็นแค่ตัวกรองย่อยภายในสีที่เลือกอยู่เท่านั้น
+    // (ครูสีหนึ่งจะเห็นได้แค่คนในสีตัวเองที่ติดแท็กนี้ ไม่เห็นของสีอื่นที่ติดแท็กชื่อเดียวกัน)
     let checkinMode = 'idle';
     let activeCheckinSportId = null;
     // แคชรายชื่อนักเรียนทั้งหมด (ไม่กรองสี) ไว้ใช้ตอนพิมพ์ค้นหาโดยยังไม่ได้เลือกกลุ่มสี/กีฬา
@@ -1298,8 +1301,6 @@
       updateCheckinDateUI();
       if (checkinMode === 'color' && currentColorFilter) {
         filterColor(currentColorFilter);
-      } else if (checkinMode === 'sport' && activeCheckinSportId) {
-        filterCheckinSport(activeCheckinSportId);
       } else if (checkinMode === 'idle') {
         // แคชรายชื่อทั้งหมดผูกกับวันที่ ถ้าเปลี่ยนวันจะโหลดใหม่อัตโนมัติตอนพิมพ์ค้นหาครั้งถัดไป
         searchStudent(true);
@@ -1333,12 +1334,18 @@
       label.innerText = isToday ? 'ดาวน์โหลดสรุป Excel' : `ดาวน์โหลดสรุป Excel (${formatThaiDate(activeDate)})`;
     }
 
+    let colorRequestToken = 0;
     async function filterColor(colorName) {
       const titleElement = document.getElementById('currentGroupTitle');
       const grid = document.getElementById('studentGrid');
 
       checkinMode = 'color';
-      activeCheckinSportId = null;
+      // ล้างตัวกรองกีฬาก็ต่อเมื่อสลับไปสีอื่นจริงๆ เท่านั้น (ถ้าแค่เปลี่ยนวันที่ในสีเดิม ให้คงตัวกรองกีฬาที่เลือกไว้)
+      // เพราะกีฬาเป็นแค่แท็กย่อยภายในสีนี้ ไม่ใช่ตัวกรองข้ามสี พอสลับสีจริงจึงต้องเริ่มใหม่
+      if (currentColorFilter !== colorName) activeCheckinSportId = null;
+      // แก้บั๊ก: ถ้ากดสลับกลุ่มสีเร็วๆ ผลลัพธ์ของการกดครั้งก่อนที่โหลดช้ากว่าอาจมาทับผลลัพธ์ล่าสุด
+      // ใช้ token กันไว้ ถ้าไม่ใช่คำขอล่าสุดแล้วจะไม่เอาผลลัพธ์นั้นมาแสดง
+      const requestId = ++colorRequestToken;
 
       setTeamAccent(colorName);
       currentColorFilter = colorName;
@@ -1362,10 +1369,13 @@
       setTimeout(async () => {
         try {
           const response = await fetch(`/api/students?color=${encodeURIComponent(colorName)}&date=${checkinDate}`);
-          allGroupStudents = await response.json();
+          const data = await response.json();
+          if (requestId !== colorRequestToken) return; // มีการเปลี่ยนกลุ่มสีไปแล้วระหว่างรอโหลด ผลลัพธ์นี้เก่าเกินไป
+          allGroupStudents = data;
           // แก้บั๊ก: เดิมสลับกลุ่มสีแล้วคำค้นหาที่พิมพ์ค้างไว้จะไม่ถูกใช้กรองทันที
           // ต้องลบข้อความแล้วพิมพ์ใหม่ถึงจะกรอง ตอนนี้พอโหลดกลุ่มสีใหม่เสร็จ
           // จะกรองด้วยคำค้นหาเดิมให้อัตโนมัติเลย
+          renderCheckinSportChips(); // ชิปกีฬาต้องนับใหม่ เพราะเป็นแท็กย่อยเฉพาะของสีนี้เท่านั้น
           applyCurrentSearch();
           updateProgress();
         } catch (error) {
@@ -1397,7 +1407,7 @@
         return;
       }
 
-      // แสดงจุดสีของแต่ละคน เมื่อรายการนี้ปนกันหลายกลุ่มสี (โหมดค้นหากีฬา / ค้นหาทั่วไป)
+      // แสดงจุดสีของแต่ละคน เมื่อรายการนี้ปนกันหลายกลุ่มสี (ตอนนี้เกิดขึ้นแค่ตอนค้นหาทั่วไปแบบยังไม่เลือกสี)
       const showColorDot = checkinMode !== 'color';
       const isUnassignedView = checkinMode === 'color' && currentColorFilter === 'none';
 
@@ -1479,7 +1489,7 @@
       if (sportTags.length === 0) return;
       const newStatus = student.sportChecked ? 'unchecked' : 'checked';
       // ใช้แท็กที่กำลังดูอยู่ถ้ามี ไม่งั้นใช้แท็กแรกของเด็กคนนั้น (สถานะเช็คชื่อกีฬาใช้ร่วมกันทุกแท็กต่อวันอยู่แล้ว)
-      const sportIdToSend = (checkinMode === 'sport' && activeCheckinSportId) ? activeCheckinSportId : sportTags[0].id;
+      const sportIdToSend = activeCheckinSportId ? activeCheckinSportId : sportTags[0].id;
 
       try {
         const res = await fetch('/api/sportcheck', {
@@ -1712,7 +1722,10 @@
           return;
         }
 
-        const filtered = allGroupStudents.filter(student => matchesKeyword(student, keyword));
+        // ค้นหาได้เฉพาะภายในกลุ่มสีที่กำลังเปิดดูอยู่เท่านั้น (ห้ามข้ามสีเด็ดขาด)
+        // ครูของสีหนึ่งต้องไม่เห็นรายชื่อเด็กของสีอื่น ต่อให้พิมพ์ชื่อถูกก็ตาม
+        // และถ้ามีการติ๊กกรองด้วยแท็กกีฬาไว้ ก็ต้องกรองซ้ำด้วยแท็กนั้นด้วย (แท็กกีฬาเป็นแค่ตัวกรองย่อยในสีนี้)
+        const filtered = allGroupStudents.filter(student => matchesKeyword(student, keyword) && matchesActiveSportFilter(student));
         renderStudents(filtered);
       };
       if (immediate) {
@@ -1723,71 +1736,67 @@
     }
 
     // เรียกใช้ตอนโหลดกลุ่มสี/กีฬาใหม่เสร็จ: ถ้าในช่องค้นหามีคำอยู่ ให้กรองด้วยคำนั้นทันที
-    // ถ้าช่องว่างอยู่ ก็แสดงรายชื่อทั้งกลุ่มตามปกติ
+    // ถ้าช่องว่างอยู่ ก็แสดงรายชื่อทั้งกลุ่มตามปกติ (กรองด้วยตัวกรองกีฬาย่อยเสมอ ถ้ามีการติ๊กไว้)
     function applyCurrentSearch() {
       const keyword = document.getElementById('searchInput').value;
       if (keyword && keyword.trim() !== '') {
         searchStudent(true);
       } else {
-        renderStudents(allGroupStudents);
+        renderStudents(allGroupStudents.filter(matchesActiveSportFilter));
       }
     }
 
     /* ================================================================ */
-    /* ค้นหา/เช็คชื่อกีฬาโดยตรงจากเมนู "เช็คชื่อ" (ไม่ต้องเข้าเมนูแท็กกีฬา)      */
+    /* กรองย่อยด้วยกีฬา ภายในกลุ่มสีที่กำลังเปิดดูอยู่ (ไม่ใช่ข้ามกลุ่มสี)                */
+    /* แก้บั๊กสำคัญ: เดิม "โหมดกีฬา" ดึงนักเรียนจากทุกสีมารวมกัน (ใช้ /api/students?sport=)   */
+    /* ทำให้ครูสีหนึ่งเห็นรายชื่อเด็กของสีอื่นที่ติดแท็กกีฬาเดียวกันได้ ซึ่งผิดหลักการ         */
+    /* "แท็กกีฬาเป็นแค่ป้ายกำกับย่อยภายในสีนั้น ไม่ใช่กลุ่มข้ามสี" ตอนนี้เปลี่ยนให้กีฬาเป็นแค่   */
+    /* ตัวกรองเพิ่มเติมจากรายชื่อของสีที่เลือกอยู่แล้วเท่านั้น (กรองในเครื่อง ไม่ยิง API ใหม่)    */
     /* ================================================================ */
 
+    // นับจำนวนนักเรียนต่อแท็กกีฬา "เฉพาะในสีที่กำลังเปิดดูอยู่" จากข้อมูลที่โหลดมาแล้ว
+    function computeSportCountsForColor() {
+      const counts = {};
+      allGroupStudents.forEach(s => {
+        (s.sportTags || []).forEach(t => { counts[t.id] = (counts[t.id] || 0) + 1; });
+      });
+      return counts;
+    }
+
     // สร้างชิปกีฬาด้านล่างกลุ่มสี จากรายการแท็กกีฬาที่มีอยู่ (sportsList โหลดตอนเปิดแอป)
+    // แสดงเฉพาะตอนเลือกกลุ่มสีอยู่เท่านั้น เพราะกีฬาไม่มีความหมายถ้าไม่ผูกกับสีใดสีหนึ่ง
     function renderCheckinSportChips() {
       const wrap = document.getElementById('checkinSportQuickWrap');
       const container = document.getElementById('checkinSportChips');
       if (!wrap || !container) return;
 
-      if (!sportsList || sportsList.length === 0) {
+      if (checkinMode !== 'color' || !sportsList || sportsList.length === 0) {
         wrap.style.display = 'none';
         return;
       }
+      const counts = computeSportCountsForColor();
       wrap.style.display = 'block';
       container.innerHTML = sportsList.map(sport => `
-        <button type="button" class="chip chip-sport${sport.id === activeCheckinSportId ? ' active' : ''}" data-sport-id="${sport.id}" onclick="filterCheckinSport('${sport.id}')">
-          <span class="swatch"></span>${escapeHtml(sport.name)}
+        <button type="button" class="chip chip-sport${sport.id === activeCheckinSportId ? ' active' : ''}" data-sport-id="${sport.id}" onclick="toggleCheckinSportFilter('${sport.id}')">
+          <span class="swatch"></span>${escapeHtml(sport.name)} <span class="stc-count">${counts[sport.id] || 0} คน</span>
         </button>
       `).join('');
     }
 
-    async function filterCheckinSport(sportId) {
-      checkinMode = 'sport';
-      activeCheckinSportId = sportId;
-      currentColorFilter = null;
+    // ติ๊ก/ยกเลิกกรองด้วยกีฬา ภายในสีที่เปิดอยู่ตอนนี้ (กรองจากข้อมูลที่มีอยู่แล้วในเครื่อง ไม่ต้องโหลดใหม่)
+    function toggleCheckinSportFilter(sportId) {
+      activeCheckinSportId = (activeCheckinSportId === sportId) ? null : sportId;
+      document.querySelectorAll('#checkinSportChips .chip').forEach(el => el.classList.toggle('active', el.dataset.sportId === activeCheckinSportId));
+      const sport = sportsList.find(s => s.id === activeCheckinSportId);
+      const colorDisplay = currentColorFilter === 'none' ? 'ยังไม่ระบุสี' : `สี${currentColorFilter}`;
+      document.getElementById('currentGroupTitle').innerText = sport ? `กลุ่ม: ${colorDisplay} · กีฬา: ${sport.name}` : `กลุ่ม: ${colorDisplay}`;
+      applyCurrentSearch();
+    }
 
-      setTeamAccent('none');
-      document.querySelectorAll('#checkinView .color-chip-row .chip').forEach(el => el.classList.remove('active'));
-      document.querySelectorAll('#checkinSportChips .chip').forEach(el => el.classList.toggle('active', el.dataset.sportId === sportId));
-
-      const sport = sportsList.find(s => s.id === sportId);
-      document.getElementById('currentGroupTitle').innerText = `กีฬา: ${sport ? sport.name : ''}`;
-      document.getElementById('progressShell').style.display = 'none';
-
-      const grid = document.getElementById('studentGrid');
-      grid.innerHTML = `
-        <div class="state-block">
-          <div class="loader-dots"><span></span><span></span><span></span></div>
-          <div class="state-title">กำลังโหลดข้อมูล...</div>
-        </div>`;
-
-      try {
-        const response = await fetch(`/api/students?sport=${encodeURIComponent(sportId)}&date=${checkinDate}`);
-        allGroupStudents = await response.json();
-        applyCurrentSearch();
-        updateProgress();
-      } catch (error) {
-        console.error('Load sport students (checkin) error:', error);
-        grid.innerHTML = `
-          <div class="state-block is-error">
-            <div class="state-title">เกิดข้อผิดพลาดในการดึงข้อมูล</div>
-            <div class="state-sub">ลองใหม่อีกครั้งภายหลัง</div>
-          </div>`;
-      }
+    // เด็กคนนี้ตรงกับตัวกรองกีฬาที่เลือกอยู่ตอนนี้ไหม (ถ้าไม่ได้เลือกกีฬาไว้ ถือว่าผ่านหมด)
+    function matchesActiveSportFilter(student) {
+      if (!activeCheckinSportId) return true;
+      return (student.sportTags || []).some(t => t.id === activeCheckinSportId);
     }
 
     /* ================================================================ */
@@ -2063,21 +2072,37 @@
       return div.innerHTML;
     }
 
+    // นับจำนวนนักเรียนที่ติดแท็กกีฬาแต่ละอัน "เฉพาะในกลุ่มสีที่กำลังดูอยู่" เท่านั้น
+    // (แก้บั๊ก: เดิมตัวเลขข้าง chip กีฬาเป็นยอดรวมทุกสีปนกัน พอสลับไปดูอีกสีนึงเลยดูเหมือนตัวเลขซ้ำ/ไม่ขยับ
+    // ทั้งที่จริงๆ กีฬานี้ของแต่ละสีต้องนับแยกกัน เพราะ "แท็กกีฬา" เป็นแค่ป้ายกำกับย่อยภายในสีนั้น ไม่ใช่กลุ่มข้ามสี)
+    function computeTagCountsForColor() {
+      const counts = {};
+      allTagColorStudents.forEach(s => {
+        (s.sportTags || []).forEach(t => { counts[t.id] = (counts[t.id] || 0) + 1; });
+      });
+      return counts;
+    }
+
     function renderSportTagList() {
       const listEl = document.getElementById('sportTagList');
       if (sportsList.length === 0) {
         listEl.innerHTML = `<div class="state-sub" style="padding:8px 0;">ยังไม่มีแท็กกีฬา เพิ่มแท็กแรกได้จากช่องด้านบน</div>`;
         return;
       }
-      listEl.innerHTML = sportsList.map(sport => `
+      // ถ้ากำลังเลือกดูสีใดสีหนึ่งอยู่ ให้นับเฉพาะสีนั้น ถ้ายังไม่เลือกสีเลยค่อยโชว์ยอดรวมทุกสีไปก่อน
+      const localCounts = activeSportColorFilter ? computeTagCountsForColor() : null;
+      listEl.innerHTML = sportsList.map(sport => {
+        const count = localCounts ? (localCounts[sport.id] || 0) : sport.studentCount;
+        const countLabel = localCounts ? `${count} คน` : `${count} คน (รวมทุกสี)`;
+        return `
         <span class="sport-tag-chip ${sport.id === activeSportId ? 'active' : ''}" onclick="selectSportTag('${sport.id}')">
           ${escapeHtml(sport.name)}
-          <span class="stc-count">${sport.studentCount} คน</span>
+          <span class="stc-count">${countLabel}</span>
           <span class="stc-del" onclick="deleteSportTag(event, '${sport.id}')" title="ลบแท็กนี้">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </span>
-        </span>
-      `).join('');
+        </span>`;
+      }).join('');
     }
 
     async function createSport() {
@@ -2132,8 +2157,13 @@
       if (activeSportColorFilter) filterTagColor(activeSportColorFilter);
     }
 
+    let tagColorRequestToken = 0;
     async function filterTagColor(colorName) {
       activeSportColorFilter = colorName;
+      // แก้บั๊ก: เดิมถ้ากดเปลี่ยนสีเร็วๆ (เช่น กดแดงแล้วรีบกดน้ำเงิน) คำขอของสีแดงที่โหลดช้ากว่า
+      // อาจมาถึงทีหลังแล้วทับข้อมูลของสีน้ำเงินที่เพิ่งโหลดเสร็จ ทำให้ตัวเลข/รายชื่อค้างเป็นของสีเดิม
+      // ใช้ token กันไว้ ถ้าไม่ใช่คำขอล่าสุดแล้วจะไม่เอาผลลัพธ์นั้นมาแสดง
+      const requestId = ++tagColorRequestToken;
       setTeamAccent(colorName);
 
       document.querySelectorAll('#sportAssignPanel .chip').forEach(el => el.classList.remove('active'));
@@ -2150,8 +2180,11 @@
 
       try {
         const response = await fetch(`/api/students?color=${encodeURIComponent(colorName)}&date=${sportCheckDate}`);
-        allTagColorStudents = await response.json();
+        const data = await response.json();
+        if (requestId !== tagColorRequestToken) return; // มีการเปลี่ยนสีไปแล้วระหว่างรอโหลด ผลลัพธ์นี้เก่าเกินไป
+        allTagColorStudents = data;
         applyTagSearch();
+        renderSportTagList(); // อัปเดตตัวเลขข้าง chip กีฬาให้เป็นของสีที่เพิ่งเลือกทันที
       } catch (err) {
         console.error('Load tag students error:', err);
         grid.innerHTML = `
@@ -2180,7 +2213,11 @@
 
     function renderTagStudents(list) {
       const grid = document.getElementById('tagStudentGrid');
-      document.getElementById('tagStudentCount').innerText = `จำนวน ${list.length} คน`;
+      // แก้บั๊ก: เดิมโชว์แค่จำนวนคนทั้งหมดในกลุ่มสีนั้น (ไม่ได้บอกว่าติดแท็กกีฬานี้ไปกี่คน)
+      // ทำให้ดูเหมือนตัวเลขค้าง/ซ้ำกันระหว่างกลุ่มสี ทั้งที่จริงๆ คือคนละความหมายกัน
+      // ตอนนี้แยกให้ชัดว่า "ติดแท็กนี้แล้วกี่คน" จาก "ทั้งหมดกี่คนในกลุ่มสีนี้"
+      const taggedCount = list.filter(s => (s.sportTags || []).some(t => t.id === activeSportId)).length;
+      document.getElementById('tagStudentCount').innerText = `ติดแท็กนี้แล้ว ${taggedCount} จาก ${list.length} คน`;
 
       if (list.length === 0) {
         grid.innerHTML = `
