@@ -317,15 +317,26 @@ app.post('/api/sports', async (req, res) => {
 });
 
 // --------------------------------------------------------
-// API 4.3: ลบแท็กกีฬา (ถอดแท็กนี้ออกจากนักเรียนทุกคนที่เคยติดไว้ด้วย)
+// API 4.3: ลบแท็กกีฬา
+// แก้ปัญหา: เดิมลบได้ทันทีแม้ยังมีนักเรียนติดแท็กอยู่เป็นร้อยคน กด/กดพลาดปุ่ม X ทีเดียวหายหมด
+// ครูต้องมานั่งติดแท็กใหม่ทุกวัน ตอนนี้บังคับว่าแท็กต้อง "ไม่มีนักเรียนติดอยู่เลย" ก่อน ถึงจะลบได้
+// (ให้ครูถอดนักเรียนออกจากแท็กนี้ให้หมดก่อน จากหน้า "แท็กกีฬา" แล้วค่อยกดลบ)
 // --------------------------------------------------------
 app.delete('/api/sports/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const deleted = await Sport.findByIdAndDelete(id);
-        if (!deleted) return res.status(404).json({ error: 'ไม่พบแท็กกีฬานี้' });
+        const sport = await Sport.findById(id);
+        if (!sport) return res.status(404).json({ error: 'ไม่พบแท็กกีฬานี้' });
 
-        await Student.updateMany({ sportTags: id }, { $pull: { sportTags: id } });
+        const studentCount = await Student.countDocuments({ sportTags: id });
+        if (studentCount > 0) {
+            return res.status(409).json({
+                error: `ลบไม่ได้ เพราะยังมีนักเรียน ${studentCount} คนติดแท็ก "${sport.name}" อยู่ กรุณาถอดนักเรียนออกจากแท็กนี้ให้หมดก่อน แล้วค่อยลบ`,
+                studentCount
+            });
+        }
+
+        await Sport.findByIdAndDelete(id);
         // ประวัติการเช็คชื่อยังเก็บไว้ตามเดิม แค่เอาชื่อกีฬาที่ลบไปแล้วออกจากข้อมูลอ้างอิง
         await SportCheck.updateMany({ checkedBySport: id }, { $set: { checkedBySport: null } });
 

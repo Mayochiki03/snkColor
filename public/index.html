@@ -737,6 +737,8 @@
   }
   .sport-tag-chip .stc-del:hover { background: color-mix(in srgb, #DC2626 12%, white); color: #DC2626; }
   .sport-tag-chip .stc-del svg { width: 12px; height: 12px; }
+  .sport-tag-chip .stc-del.is-blocked { opacity: .35; cursor: not-allowed; }
+  .sport-tag-chip .stc-del.is-blocked:hover { background: transparent; color: var(--ink-faint); }
 
   .tag-select-box {
     width: 22px; height: 22px; border-radius: 7px;
@@ -2101,11 +2103,15 @@
       listEl.innerHTML = sportsList.map(sport => {
         const count = localCounts ? (localCounts[sport.id] || 0) : sport.studentCount;
         const countLabel = localCounts ? `${count} คน` : `${count} คน (รวมทุกสี)`;
+        // ปุ่มลบ: บล็อกไว้ตั้งแต่ฝั่งหน้าบ้านเลยถ้ายังมีนักเรียนติดแท็กนี้อยู่ (นับรวมทุกสี ตรงกับเงื่อนไขฝั่งเซิร์ฟเวอร์)
+        // กันครูกดพลาดแล้วต้องมาเห็น alert ทีหลัง เห็นเลยว่าทำไมกดลบไม่ได้ตอนนี้
+        const canDelete = sport.studentCount === 0;
+        const delTitle = canDelete ? 'ลบแท็กนี้' : `ลบไม่ได้ ยังมีนักเรียน ${sport.studentCount} คนติดแท็กนี้อยู่ ต้องถอดออกให้หมดก่อน`;
         return `
         <span class="sport-tag-chip ${sport.id === activeSportId ? 'active' : ''}" onclick="selectSportTag('${sport.id}')">
           ${escapeHtml(sport.name)}
           <span class="stc-count">${countLabel}</span>
-          <span class="stc-del" onclick="deleteSportTag(event, '${sport.id}')" title="ลบแท็กนี้">
+          <span class="stc-del${canDelete ? '' : ' is-blocked'}" onclick="deleteSportTag(event, '${sport.id}')" title="${delTitle}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </span>
         </span>`;
@@ -2140,23 +2146,39 @@
       evt.stopPropagation();
       const sport = sportsList.find(s => s.id === sportId);
       const sportName = sport ? sport.name : '';
-      if (!confirm(`ลบแท็ก "${sportName}" ใช่หรือไม่? รายชื่อที่เคยติดแท็กนี้จะถูกถอดออกทั้งหมด`)) return;
+      if (sport && sport.studentCount > 0) {
+        alert(`ลบไม่ได้ เพราะยังมีนักเรียน ${sport.studentCount} คนติดแท็ก "${sportName}" อยู่\nกรุณาถอดนักเรียนออกจากแท็กนี้ให้หมดก่อน แล้วค่อยลบ`);
+        return;
+      }
+      if (!confirm(`ลบแท็ก "${sportName}" ใช่หรือไม่?`)) return;
       try {
         const res = await fetch(`/api/sports/${sportId}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error('delete failed');
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'ลบแท็กไม่สำเร็จ');
         if (activeSportId === sportId) {
           activeSportId = null;
           document.getElementById('sportAssignPanel').style.display = 'none';
         }
         await loadSportsList();
       } catch (err) {
-        alert('ลบแท็กไม่สำเร็จ กรุณาลองใหม่');
+        // แก้บั๊ก: เดิมโชว์ข้อความ "ลบแท็กไม่สำเร็จ" กลาง ๆ เสมอ ไม่บอกสาเหตุจริง
+        // ตอนนี้ถ้าเซิร์ฟเวอร์บล็อกเพราะยังมีนักเรียนติดแท็กอยู่ จะโชว์ข้อความนั้นให้ครูเห็นเลยว่าต้องทำอะไรต่อ
+        alert(err.message || 'ลบแท็กไม่สำเร็จ กรุณาลองใหม่');
       }
     }
 
     function selectSportTag(sportId) {
       const sport = sportsList.find(s => s.id === sportId);
       if (!sport) return;
+      // แก้บั๊ก: เดิมกดเลือกแท็กแล้ว กดซ้ำที่แท็กเดิมไม่สามารถยกเลิกการเลือกได้ (ต่างจากหน้าเช็คชื่อ
+      // ที่กดซ้ำแล้วยกเลิกได้ตามปกติ) ทำให้ครูที่อยากจะ "เลิกดู" แท็กนั้นไปกดปุ่มลบ (X) แทน ซึ่งอันตราย
+      // เพราะปุ่มนั้นลบแท็กจริง ๆ ตอนนี้กดซ้ำที่แท็กที่กำลังเลือกอยู่ = ยกเลิกการเลือก ปิดแผงลงเฉย ๆ
+      if (activeSportId === sportId) {
+        activeSportId = null;
+        document.getElementById('sportAssignPanel').style.display = 'none';
+        renderSportTagList();
+        return;
+      }
       activeSportId = sportId;
       document.getElementById('activeSportName').innerText = sport.name;
       document.getElementById('sportAssignPanel').style.display = 'block';
